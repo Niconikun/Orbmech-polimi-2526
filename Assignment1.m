@@ -88,12 +88,10 @@ for i = 1:n_points
         try
             % Get planetary positions - FIXED: Ensure consistent coordinate systems
             [kep_earth, ~] = uplanet(t_dep, 3);  % Earth = 3
-            kep_earth_deg = [kep_earth(1),kep_earth(2),rad2deg(kep_earth(3)),rad2deg(kep_earth(4)),rad2deg(kep_earth(5)),rad2deg(kep_earth(6))];
-            [r1, v1] = kep2car(kep_earth_deg, mu_Sun);
+            [r1, v1] = kep2car(kep_earth, mu_Sun);
             
             [kep_mars, ~] = uplanet(t_arr, 4);   % Mars = 4
-            kep_mars_deg = [kep_mars(1),kep_mars(2),rad2deg(kep_mars(3)),rad2deg(kep_mars(4)),rad2deg(kep_mars(5)),rad2deg(kep_mars(6))];
-            [r2, v2] = kep2car(kep_mars_deg, mu_Sun);
+            [r2, v2] = kep2car(kep_mars, mu_Sun);
             
             % Ensure vectors are column vectors
             r1 = r1(:); v1 = v1(:);
