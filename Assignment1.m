@@ -21,10 +21,14 @@ R_Sun = astroConstants(3);       % Sun's radius [km]
 % Earth
 mu_Earth = astroConstants(13);      % Sun's gravitational parameter [km^3/s^2];
 R_Earth = astroConstants(23);       % Sun's radius [km]
+v_Earth = 29.78; %km/s            % Earth orbital velocity around the Sun [km/s]
+v_inf_Earth = 11.186; %km/s        % Earth escape velocity [km/s]
 
 % Mars
 mu_Mars = astroConstants(14);      % Sun's gravitational parameter [km^3/s^2];
 R_Mars = astroConstants(24);       % Sun's radius [km]
+v_Mars = 24.07; %km/s              % Mars orbital velocity around the Sun [km/s]
+v_inf_Mars = 5.027; %km/s          % Mars escape velocity [km/s]
 
 
 orbitType = 0;
