@@ -8,9 +8,10 @@ day2sec = @(d) d*86400;
 
 
 % Add paths
-addpath("Ephemeris\")
-addpath("Functions\")
-addpath("Functions\timeConversion\")
+addpath("Code\Assignment2\Ephemeris\")
+addpath("Code\Assignment2\Functions\")
+addpath("Code\Assignment2\Functions\timeConversion\")
+addpath('Code\Assignment2\img')
 
 % Physical parameters
 mu_E = astroConstants(13); % Earth's gravitational parameter [km^3/s^2]
@@ -130,7 +131,7 @@ end
 
 %% 2.b. Repeating Ground Track
 
-a_repeat = RepeatingGroundTrack(m,k,w_planet_rad,mu_E);
+a_repeat = RepeatingGroundTrack(m,k,w_earth_rad,mu_E);
 kep_repeat = [a_repeat kep_parameters(2) kep_parameters(3) kep_parameters(4) kep_parameters(5) kep_parameters(6)];
 
 [r_repeat_initial, v_repeat_initial] = kep2car(kep_repeat, mu_E);
@@ -180,6 +181,59 @@ for i = 1:length(TRepeat)
     % Calculate latitude
     gtrack_data_repeat(i,4) = rad2deg(delta);
     lat = gtrack_data_repeat(i,4);
+    
+    %fprintf('Final output - Lon: %f deg, Lat: %f deg\n\n', lon, lat);
+end
+
+%% Repeating Perturbed Ground Track
+
+a_repeat_perturbed = RepeatingGroundTrack(m,k,w_earth_rad,mu_E);
+kep_repeat_perturbed = [a_repeat_perturbed kep_parameters(2) kep_parameters(3) kep_parameters(4) kep_parameters(5) kep_parameters(6)];
+
+[r_repeat_initial_perturbed, v_repeat_initial_perturbed] = kep2car(kep_repeat_perturbed, mu_E);
+y_repeat_initial_perturbed = [r_repeat_initial_perturbed; v_repeat_initial_perturbed];  % Combine position and velocity into 6-element vector
+
+% Set time span
+tspan_repeat_perturbed = linspace( 0, T_groundtrack, floor(T_groundtrack)); % Reduced to 10 periods for clarity
+
+% Set options for the ODE solver
+options = odeset( 'RelTol', 1e-10, 'AbsTol', 1e-11 );
+
+% Perform the integration
+[ TRepeatPerturbed, YRepeatPerturbed ] = ode113( @(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_repeat_perturbed, y_repeat_initial_perturbed, options );
+
+% Calculate ground track
+r_repeat_perturbed = YRepeatPerturbed(:,1:3);
+v_repeat_perturbed = YRepeatPerturbed(:,4:6);
+
+gtrack_data_repeat_perturbed = zeros(length(TRepeatPerturbed),4);
+
+for i = 1:length(TRepeatPerturbed)
+    R = norm(r_repeat_perturbed(i,:));
+    %fprintf('Position magnitude: %f km\n', R); % Debug
+    
+    % Calculate declination (latitude)
+    gtrack_data_repeat_perturbed(i,1) = asin(r_repeat_perturbed(i,3) / R); %delta
+    delta = gtrack_data_repeat_perturbed(i,1);
+    %fprintf('Declination (delta): %f rad, %f deg\n', delta, rad2deg(delta));
+    
+    % Calculate right ascension
+    gtrack_data_repeat_perturbed(i,2) = atan2(r_repeat_perturbed(i,2), r_repeat_perturbed(i,1)); %alpha
+    alpha = gtrack_data_repeat_perturbed(i,2);
+    %fprintf('Right ascension (alpha): %f rad, %f deg\n', alpha, rad2deg(alpha));
+    
+    % Calculate Greenwich sidereal time
+    theta_g = theta_g_t_0 + w_earth_rad * (TRepeatPerturbed(i) - t_0);
+    %fprintf('Greenwich sidereal time (theta_g): %f rad, %f deg\n', theta_g, rad2deg(theta_g));
+    
+    % Calculate longitude
+    lon = rad2deg(alpha - theta_g);
+    gtrack_data_repeat_perturbed(i,3) = mod(lon + 180, 360) - 180;
+    lon = gtrack_data_repeat_perturbed(i,3);
+    
+    % Calculate latitude
+    gtrack_data_repeat_perturbed(i,4) = rad2deg(delta);
+    lat = gtrack_data_repeat_perturbed(i,4);
     
     %fprintf('Final output - Lon: %f deg, Lat: %f deg\n\n', lon, lat);
 end
@@ -238,7 +292,7 @@ for i = 1:length(TPerturbed)
     
     % Calculate right ascension
     gtrack_data_perturbed(i,2) = atan2(r_perturbed(i,2), r_perturbed(i,1)); %alpha
-    alpha = gtrack_data_pertubed(i,2);
+    alpha = gtrack_data_perturbed(i,2);
     %fprintf('Right ascension (alpha): %f rad, %f deg\n', alpha, rad2deg(alpha));
     
     % Calculate Greenwich sidereal time
@@ -257,12 +311,6 @@ for i = 1:length(TPerturbed)
     %fprintf('Final output - Lon: %f deg, Lat: %f deg\n\n', lon, lat);
 end
 
-
-figure('Name','Ground Track 2BP & Repeating w/ Perturbations')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-
 % Handle longitude wrapping for continuous lines
 lon_nominal = gtrack_data(:,3);
 lat_nominal = gtrack_data(:,4);
@@ -272,6 +320,9 @@ lat_repeat = gtrack_data_repeat(:,4);
 
 lon_perturbed = gtrack_data_perturbed(:,3);
 lat_perturbed = gtrack_data_perturbed(:,4);
+
+lon_repeat_perturbed = gtrack_data_repeat_perturbed(:,3);
+lat_repeat_perturbed = gtrack_data_repeat_perturbed(:,4);
 
 
 % Detect and handle discontinuities
@@ -287,9 +338,18 @@ wrap_indices_perturbed = find(abs(diff(lon_perturbed)) > 180);
 starts_perturbed = [1; wrap_indices_perturbed + 1];
 ends_perturbed = [wrap_indices_perturbed; length(lon_perturbed)];
 
+wrap_indices_repeat_perturbed = find(abs(diff(lon_repeat_perturbed)) > 180);
+starts_repeat_perturbed = [1; wrap_indices_repeat_perturbed + 1];
+ends_repeat_perturbed = [wrap_indices_repeat_perturbed; length(lon_repeat_perturbed)];
+
+figure('Name','Ground Track 2BP & Repeating w/ Perturbations')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+
 % Plot each continuous segment
 for i = 1:length(starts_nominal)
-    idx = starts_nominal(i):ends(i);
+    idx = starts_nominal(i):ends_nominal(i);  % Fixed: was ends(i), should be ends_nominal(i)
     plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
 end
 
@@ -302,7 +362,7 @@ end
 % Plot each continuous segment
 for i = 1:length(starts_perturbed)
     idx = starts_perturbed(i):ends_perturbed(i);
-    plot(lon_perturbed(idx), lat_perturbed(idx), 'b', 'LineWidth', 1.5);
+    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1.5);  % Fixed: Changed color to 'g' for distinction from repeat ('b')
 end
 
 xlabel('Longitude [degrees]')
@@ -313,6 +373,71 @@ ylim([-90 90])
 grid on
 hold off
 
+%% Ground Track Nominal Orbit Only
+figure('Name','Ground Track Nominal Orbit Only')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+% Plot each continuous segment
+for i = 1:length(starts_nominal)
+    idx = starts_nominal(i):ends_nominal(i);  % Fixed: was ends(i), should be ends_nominal(i)
+    plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
+end
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Nominal Orbit Only')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+%% Ground Track Nominal vs Repeating
+figure('Name','Ground Track Nominal vs Repeating')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+% Plot each continuous segment
+for i = 1:length(starts_nominal)
+    idx = starts_nominal(i):ends_nominal(i);  % Fixed: was ends(i), should be ends_nominal(i)
+    plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
+end
+% Plot each continuous segment
+for i = 1:length(starts_repeat)
+    idx = starts_repeat(i):ends_repeat(i);
+    plot(lon_repeat(idx), lat_repeat(idx), 'b', 'LineWidth', 1.5);
+end
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Nominal vs Repeating')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+%% Evaluate Repeating Ground Track but with Perturbations
+
+
+figure('Name','Ground Track Repeating Perturbed vs Perturbed')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+% Plot each continuous segment
+for i = 1:length(starts_repeat_perturbed)
+    idx = starts_repeat_perturbed(i):ends_repeat_perturbed(i);
+    plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'b', 'LineWidth', 1.5);
+end
+% Plot each continuous segment
+for i = 1:length(starts_perturbed)
+    idx = starts_perturbed(i):ends_perturbed(i);
+    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1.5);  % Fixed: Changed color to 'g' for distinction from repeat ('b')
+end
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Repeating vs Perturbed')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
 
 %% 4.a. Elements History & Filtering
 
@@ -340,7 +465,7 @@ points_per_orbit = floor(T_orbital); % Since timestep = 1s
 figure('Name','Geometric Keplerian Elements History - Corrected')
 subplot(3,1,1)
 hold on
-plot(tspan_plot, a_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,1), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Semi-major Axis [km]')
 xlabel('Time')
@@ -350,7 +475,7 @@ grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan_plot, i_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,3), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Inclination [deg]')
 xlabel('Time')
@@ -360,7 +485,7 @@ grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan_plot, e_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,2), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Eccentricity [-]')
 xlabel('Time')
@@ -371,7 +496,7 @@ grid on
 figure('Name','Orientation Keplerian Elements History - Corrected')
 subplot(3,1,1)
 hold on
-plot(tspan_plot, Omega_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,4), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Right Ascension Ascending Node [deg]')
 xlabel('Time')
@@ -381,7 +506,7 @@ grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan_plot, omega_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,5), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Argument of Periapsis [deg]')
 xlabel('Time')
@@ -391,7 +516,7 @@ grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan_plot, TA_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan, keplerian_history(:,6), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('True Anomaly [deg]')
 xlabel('Time')
@@ -647,6 +772,9 @@ grid on;
 %% Theoretical secular rates from J2 (for comparison)
 
 % Analytical secular rates due to J2 (Vallado, 2013)
+a_initial = kep_parameters(1);  % Added: Define a_initial
+e_initial = kep_parameters(2);  % Added: Define e_initial
+i_initial = kep_parameters(3);  % Added: Define i_initial
 n = sqrt(mu_E / a_initial^3);  % Mean motion
 
 % Secular rates (first-order approximation)
@@ -731,6 +859,48 @@ TA_eph_titan = deg2rad(mission_info_titan(:,9)); % True anomaly [rad]
 keplerian_elements_eph_titan = [a_eph_titan, e_eph_titan, i_eph_titan, OM_eph_titan, w_eph_titan, TA_eph_titan];
 
 keplerian_elements_eph_titan(:,6) = unwrap(keplerian_elements_eph_titan(:,6));
+
+% Extract initial Keplerian elements from ephemeris (first entry)
+kep_initial_tank = keplerian_elements_eph_tank(1,:);
+kep_initial_titan = keplerian_elements_eph_titan(1,:);
+
+% Time span for propagation (match ephemeris duration)
+tspan_eph_tank = seconds(utc_time_tank - utc_time_tank(1));
+tspan_eph_titan = seconds(utc_time_titan - utc_time_titan(1));
+
+% Propagate Tank with perturbations using Gauss equations
+[TGauss_tank, KepGauss_tank] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), ...
+                                       tspan_eph_tank, kep_initial_tank', options);
+
+% Propagate Titan with perturbations using Gauss equations
+[TGauss_titan, KepGauss_titan] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), ...
+                                        tspan_eph_titan, kep_initial_titan', options);
+
+% Convert Gauss results to ground tracks for comparison
+gtrack_data_gauss_tank = zeros(length(TGauss_tank), 4);
+gtrack_data_gauss_titan = zeros(length(TGauss_titan), 4);
+
+for i = 1:length(TGauss_tank)
+    [r_gauss_tank, ~] = kep2car(KepGauss_tank(i,:)', mu_E);
+    R_gauss_tank = norm(r_gauss_tank);
+    delta_gauss_tank = asin(r_gauss_tank(3) / R_gauss_tank);
+    alpha_gauss_tank = atan2(r_gauss_tank(2), r_gauss_tank(1));
+    theta_g_gauss_tank = theta_g_t0_rad + w_earth_rad * TGauss_tank(i);
+    lon_gauss_tank = rad2deg(alpha_gauss_tank - theta_g_gauss_tank);
+    gtrack_data_gauss_tank(i,3) = mod(lon_gauss_tank + 180, 360) - 180;
+    gtrack_data_gauss_tank(i,4) = rad2deg(delta_gauss_tank);
+end
+
+for i = 1:length(TGauss_titan)
+    [r_gauss_titan, ~] = kep2car(KepGauss_titan(i,:)', mu_E);
+    R_gauss_titan = norm(r_gauss_titan);
+    delta_gauss_titan = asin(r_gauss_titan(3) / R_gauss_titan);
+    alpha_gauss_titan = atan2(r_gauss_titan(2), r_gauss_titan(1));
+    theta_g_gauss_titan = theta_g_t0_rad + w_earth_rad * TGauss_titan(i);
+    lon_gauss_titan = rad2deg(alpha_gauss_titan - theta_g_gauss_titan);
+    gtrack_data_gauss_titan(i,3) = mod(lon_gauss_titan + 180, 360) - 180;
+    gtrack_data_gauss_titan(i,4) = rad2deg(delta_gauss_titan);
+end
 
 fprintf('Processing ephemeris ground track for Tank...\n');
 gtrack_data_eph_tank = zeros(length(utc_time_tank), 4);
@@ -818,12 +988,14 @@ function plot_ground_track(lon, lat, color, style)
 end
 
 plot_ground_track(gtrack_data_eph_tank(:,3), gtrack_data_eph_tank(:,4), 'k', '--');
+plot_ground_track(gtrack_data_gauss_tank(:,3), gtrack_data_gauss_tank(:,4), 'r', '-');  % Plot Gauss theory for Tank
 plot_ground_track(gtrack_data_eph_titan(:,3), gtrack_data_eph_titan(:,4), 'b', '.-');
+plot_ground_track(gtrack_data_gauss_titan(:,3), gtrack_data_gauss_titan(:,4), 'm', '-');  % Plot Gauss theory for Titan
 
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track Comparison')
-legend('BREEZE-M DEB (TANK)', 'TITAN 3C TRANSTAGE DEB', 'Location', 'best')
+legend('BREEZE-M DEB (TANK) Ephemeris', 'BREEZE-M DEB (TANK) Gauss', 'TITAN 3C TRANSTAGE DEB Ephemeris', 'TITAN 3C TRANSTAGE DEB Gauss', 'Location', 'best')
 xlim([-180 180])
 ylim([-90 90])
 grid on
@@ -835,51 +1007,97 @@ hold off
 figure('Name','Keplerian Elements History for Tank, Ephemeris vs Gaussian Theory')
 subplot(6,1,1)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,1))
+hold on
+plot(utc_time_tank, KepGauss_tank(:,1), 'r--')  % Plot Gauss theory
+hold off
 title('Semi-major Axis')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,2)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,2))
+hold on
+plot(utc_time_tank, KepGauss_tank(:,2), 'r--')  % Plot Gauss theory
+hold off
 title('Eccentricity')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,3)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,3)))
+hold on
+plot(utc_time_tank, rad2deg(KepGauss_tank(:,3)), 'r--')  % Plot Gauss theory
+hold off
 title('Inclination')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,4)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,4)))
+hold on
+plot(utc_time_tank, rad2deg(KepGauss_tank(:,4)), 'r--')  % Plot Gauss theory
+hold off
 title('Right Ascension Ascending Node [deg]')
+legend('Ephemeris', 'Gauss Theory')
 
 subplot(6,1,5)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,5)))
+hold on
+plot(utc_time_tank, rad2deg(KepGauss_tank(:,5)), 'r--')  % Plot Gauss theory
+hold off
 title('Argument of Perigee [deg]')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,6)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,6)))
+hold on
+plot(utc_time_tank, rad2deg(KepGauss_tank(:,6)), 'r--')  % Plot Gauss theory
+hold off
 title('True Anomaly [deg]')
-% 
-% 
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 figure('Name','Keplerian Elements History for Titan, Ephemeris vs Gaussian Theory')
 subplot(6,1,1)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,1))
+hold on
+plot(utc_time_titan, KepGauss_titan(:,1), 'r--')  % Plot Gauss theory
+hold off
 title('Semi-major Axis')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,2)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,2))
+hold on
+plot(utc_time_titan, KepGauss_titan(:,2), 'r--')  % Plot Gauss theory
+hold off
 title('Eccentricity')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,3)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,3)))
+hold on
+plot(utc_time_titan, rad2deg(KepGauss_titan(:,3)), 'r--')  % Plot Gauss theory
+hold off
 title('Inclination')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,4)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,4)))
+hold on
+plot(utc_time_titan, rad2deg(KepGauss_titan(:,4)), 'r--')  % Plot Gauss theory
+hold off
 title('Right Ascension Ascending Node [deg]')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,5)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,5)))
+hold on
+plot(utc_time_titan, rad2deg(KepGauss_titan(:,5)), 'r--')  % Plot Gauss theory
+hold off
 title('Argument of Perigee [deg]')
-% 
+legend('Ephemeris', 'Gauss Theory')
+
 subplot(6,1,6)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,6)))
+hold on
+plot(utc_time_titan, rad2deg(KepGauss_titan(:,6)), 'r--')  % Plot Gauss theory
+hold off
 title('True Anomaly [deg]')
+legend('Ephemeris', 'Gauss Theory')

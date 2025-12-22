@@ -1,0 +1,31 @@
+{
+    "cSpell.words": [
+        "addpath",
+        "clearvars",
+        "domega",
+        "flipud",
+        "fprintf",
+        "groundtrack",
+        "gtrack",
+        "imagesc",
+        "imread",
+        "keplerian",
+        "linspace",
+        "movmean",
+        "odeset",
+        "periapsis",
+        "pertubed",
+        "RAAN",
+        "semilogy",
+        "texturemap",
+        "timestep",
+        "Transtage",
+        "TRANSTAGE",
+        "tspan",
+        "xlabel",
+        "xlim",
+        "ylabel",
+        "ylim",
+        "zlabel"
+    ]
+}
