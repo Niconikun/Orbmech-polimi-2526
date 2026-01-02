@@ -37,21 +37,21 @@ optionsLMR = 0;     % Display options
 
 %% Time Window Definition
 % Reduced resolution for initial testing (increase later)
-n_points = 100;
+n_points = 120;
 
 % Departure window from Earth (2030-2060)
-t_dep_e = date2mjd2000([2030, 1, 1, 0, 0, 0]);
-t_dep_l = date2mjd2000([2060, 1, 1, 0, 0, 0]);
+t_dep_e = date2mjd2000([2046, 4, 20, 0, 0, 0]);
+t_dep_l = date2mjd2000([2047, 5, 21, 0, 0, 0]);
 departure_dates = linspace(t_dep_e, t_dep_l, n_points);
 
 % Gravity assist at Mars
-t_ga_e = date2mjd2000([2030, 3, 1, 0, 0, 0]);
-t_ga_l = date2mjd2000([2060, 1, 1, 0, 0, 0]);
+t_ga_e = date2mjd2000([2047, 4, 29, 0, 0, 0]);
+t_ga_l = date2mjd2000([2048, 5, 30, 0, 0, 0]);
 ga_dates = linspace(t_ga_e, t_ga_l, n_points);
 
 % Arrival at asteroid
-t_arr_e = date2mjd2000([2030, 6, 1, 0, 0, 0]);
-t_arr_l = date2mjd2000([2060, 1, 1, 0, 0, 0]);
+t_arr_e = date2mjd2000([2052, 6, 27, 0, 0, 0]);
+t_arr_l = date2mjd2000([2053, 7, 27, 0, 0, 0]);
 arrival_dates = linspace(t_arr_e, t_arr_l, n_points);
 
 % Initialize delta-v matrix and other metrics
