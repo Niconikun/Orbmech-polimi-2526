@@ -66,6 +66,9 @@ kep_parameters = [0.69427e4, 0.0277, deg2rad(85), deg2rad(72), deg2rad(130), 0];
 % Set ODE solver options for high precision
 options = odeset('RelTol', 1e-13, 'AbsTol', 1e-14);
 
+fprintf('Setting up. Please wait...\n');
+fprintf('----------------------------------------\n');
+
 %% 1. Nominal Orbit
 % This section computes and visualizes the unperturbed two-body problem orbit.
 % It starts by converting initial Keplerian elements to Cartesian coordinates,
@@ -84,7 +87,7 @@ T_nominal = 2*pi*sqrt(a_nominal^3/mu_E); % Orbital period [s]
 
 % Define time span for integration: simulate over the ground track duration
 % but limit to integer multiples of the period for clarity
-tspan_nominal = linspace(0, T_nominal, floor(T_groundtrack)); % Time vector [s]
+tspan_nominal = linspace(0, T_groundtrack, floor(T_groundtrack)); % Time vector [s]
 
 % Integrate the two-body problem equations using ODE113 solver
 [TNominal, YNominal] = ode113(@(t,y) ode_2bp(t,y,mu_E), tspan_nominal, y_nominal_initial, options);
@@ -96,23 +99,25 @@ v_nominal = YNominal(:,4:6); % Velocity vectors [km/s]
 % Create a 3D plot of the nominal orbit with Earth visualization
 figure('Name','Nominal Orbit')
 hold on
-plot3(YNominal(:,1), YNominal(:,2), YNominal(:,3)) % Plot the orbit trajectory
+plot3(YNominal(:,1), YNominal(:,2), YNominal(:,3),'r') % Plot the orbit trajectory
 surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none'); % Earth surface
 
 % Finalize the plot with labels, equal axes, and grid
 hold off;
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
-title('Two-body problem orbit');
+title('Orbit Representation - Nominal Orbit (2BP)');
 axis equal;
 grid on;
 view(45,30);
+legend('Orbit','Earth');
 
 % Print key orbital parameters for the nominal orbit
 fprintf('Plotting Nominal Orbit. Identified as a Polar Low Earth Orbit.\n');
-fprintf('Radius of the Pericenter: %f km\n', kep_parameters(1)*(1-kep_parameters(2)));
-fprintf('Radius of the Apocenter: %f km\n', kep_parameters(1)*(1+kep_parameters(2)));
-fprintf('Altitude of the Pericenter: %f km\n', kep_parameters(1)*(1-kep_parameters(2)) - R_E);
-fprintf('Altitude of the Apocenter: %f km\n', kep_parameters(1)*(1+kep_parameters(2)) - R_E);
+fprintf('Radius of the Pericenter: %4f km\n', kep_parameters(1)*(1-kep_parameters(2)));
+fprintf('Radius of the Apocenter: %4f km\n', kep_parameters(1)*(1+kep_parameters(2)));
+fprintf('Altitude of the Pericenter: %4f km\n', kep_parameters(1)*(1-kep_parameters(2)) - R_E);
+fprintf('Altitude of the Apocenter: %4f km\n', kep_parameters(1)*(1+kep_parameters(2)) - R_E);
+fprintf('Orbital Period: %4f minutes\n', T_nominal/60);
 fprintf('----------------------------------------\n');
 
 %% 2.a. Ground Track of Nominal Orbit
@@ -137,13 +142,15 @@ for i = 1:length(TNominal)
     theta_g = theta_g_t_0 + w_earth_rad * (TNominal(i) - t_0);
     
     % Calculate longitude by subtracting GST from right ascension, and wrap to [-180, 180]
-    lon = rad2deg(alpha - theta_g);
+    lon = rad2deg(gtrack_data(i,2) - theta_g);
     gtrack_data(i,3) = mod(lon + 180, 360) - 180;
     
     % Calculate latitude in degrees
-    gtrack_data(i,4) = rad2deg(delta);
+    gtrack_data(i,4) = rad2deg(gtrack_data(i,1));
 end
 
+fprintf('Calculating Nominal Ground Track.\n');
+fprintf('----------------------------------------\n');
 %% 2.b. Repeating Ground Track
 % This section computes a repeating ground track by adjusting the semi-major axis
 % to achieve resonance with Earth's rotation, integrates the unperturbed orbit,
@@ -182,10 +189,13 @@ for i = 1:length(TRepeat)
     theta_g = theta_g_t_0 + w_earth_rad * (TRepeat(i) - t_0);
     
     % Calculate longitude and latitude
-    lon = rad2deg(alpha - theta_g);
+    lon = rad2deg(gtrack_data_repeat(i,2) - theta_g);
     gtrack_data_repeat(i,3) = mod(lon + 180, 360) - 180;
-    gtrack_data_repeat(i,4) = rad2deg(delta);
+    gtrack_data_repeat(i,4) = rad2deg(gtrack_data_repeat(i,1));
 end
+
+fprintf('Calculating Repeating Nominal Ground Track assuming k = 1 and m = 12.\n');
+fprintf('----------------------------------------\n');
 
 %% Repeating Perturbed Ground Track
 % This section computes the ground track for a repeating orbit under perturbations
@@ -224,10 +234,13 @@ for i = 1:length(TRepeatPerturbed)
     theta_g = theta_g_t_0 + w_earth_rad * (TRepeatPerturbed(i) - t_0);
     
     % Calculate longitude and latitude
-    lon = rad2deg(alpha - theta_g);
+    lon = rad2deg(gtrack_data_repeat_perturbed(i,2) - theta_g);
     gtrack_data_repeat_perturbed(i,3) = mod(lon + 180, 360) - 180;
-    gtrack_data_repeat_perturbed(i,4) = rad2deg(delta);
+    gtrack_data_repeat_perturbed(i,4) = rad2deg(gtrack_data_repeat_perturbed(i,1));
 end
+
+fprintf('Calculating Repeating Perturbed Ground Track assuming k = 1 and m = 12.\n');
+fprintf('----------------------------------------\n');
 
 %% 3.a. Perturbed Orbit (J2 + Drag)
 % This section integrates the orbit under J2 and atmospheric drag perturbations,
@@ -258,6 +271,11 @@ hold off;
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
 axis equal;
 grid on;
+view(45,30);
+
+
+fprintf('Calculating and Plotting Perturbed Orbit with J2 and Drag.\n');
+fprintf('----------------------------------------\n');
 
 %% 2.c. Ground Track of Perturbed
 % This section calculates the ground track for the perturbed orbit.
@@ -277,9 +295,9 @@ for i = 1:length(TPerturbed)
     theta_g = theta_g_t_0 + w_earth_rad * (TPerturbed(i) - t_0);
     
     % Calculate longitude and latitude
-    lon = rad2deg(alpha - theta_g);
+    lon = rad2deg(gtrack_data_perturbed(i,2) - theta_g);
     gtrack_data_perturbed(i,3) = mod(lon + 180, 360) - 180;
-    gtrack_data_perturbed(i,4) = rad2deg(delta);
+    gtrack_data_perturbed(i,4) = rad2deg(gtrack_data_perturbed(i,1));
 end
 
 % Handle longitude wrapping for continuous plotting
@@ -333,9 +351,60 @@ ylim([-90 90])
 grid on
 hold off
 
+fprintf('Plotting Ground Track for Nominal, Repeating, and Perturbed Orbits.\n');
+fprintf('----------------------------------------\n');
+
 %% Ground Track Nominal Orbit Only
-% Plot ground track for nominal orbit only
-figure('Name','Ground Track Nominal Orbit Only')
+% Plot ground track for nominal orbit only - 1 orbit period
+figure('Name','Ground Track Nominal Orbit - 1 Orbit Period')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+% Find indices for 1 orbit period
+idx_1orbit = TNominal <= T_nominal;
+lon_1orbit = lon_nominal(idx_1orbit);
+lat_1orbit = lat_nominal(idx_1orbit);
+wrap_indices_1orbit = find(abs(diff(lon_1orbit)) > 180);
+starts_1orbit = [1; wrap_indices_1orbit + 1];
+ends_1orbit = [wrap_indices_1orbit; length(lon_1orbit)];
+for i = 1:length(starts_1orbit)
+    idx = starts_1orbit(i):ends_1orbit(i);
+    plot(lon_1orbit(idx), lat_1orbit(idx), 'r', 'LineWidth', 1);
+end
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Nominal Orbit (1 Orbit Period)')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+% Plot ground track for nominal orbit only - 1 day
+figure('Name','Ground Track Nominal Orbit - 1 Day')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+% Find indices for 1 day (86400 seconds)
+idx_1day = TNominal <= 86400;
+lon_1day = lon_nominal(idx_1day);
+lat_1day = lat_nominal(idx_1day);
+wrap_indices_1day = find(abs(diff(lon_1day)) > 180);
+starts_1day = [1; wrap_indices_1day + 1];
+ends_1day = [wrap_indices_1day; length(lon_1day)];
+for i = 1:length(starts_1day)
+    idx = starts_1day(i):ends_1day(i);
+    plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1);
+end
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Nominal Orbit (1 Day)')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+% Plot ground track for nominal orbit only - 12 days
+figure('Name','Ground Track Nominal Orbit - 12 Days')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
 hold on
@@ -345,55 +414,15 @@ for i = 1:length(starts_nominal)
 end
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Nominal Orbit Only')
+title('Satellite Ground Track - Nominal Orbit (12 Days)')
 xlim([-180 180])
 ylim([-90 90])
 grid on
 hold off
 
-%% Ground Track Nominal vs Repeating
-% Plot comparison of nominal and repeating ground tracks
-figure('Name','Ground Track Nominal vs Repeating')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-for i = 1:length(starts_nominal)
-    idx = starts_nominal(i):ends_nominal(i);
-    plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
-end
-for i = 1:length(starts_repeat)
-    idx = starts_repeat(i):ends_repeat(i);
-    plot(lon_repeat(idx), lat_repeat(idx), 'b', 'LineWidth', 1.5);
-end
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Nominal vs Repeating')
-xlim([-180 180])
-ylim([-90 90])
-grid on
-hold off
+fprintf('Plotting Nominal Ground Track with different periods.\n');
+fprintf('----------------------------------------\n');
 
-%% Evaluate Repeating Ground Track but with Perturbations
-% Plot comparison of repeating perturbed and perturbed ground tracks
-figure('Name','Ground Track Repeating Perturbed vs Perturbed')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-for i = 1:length(starts_repeat_perturbed)
-    idx = starts_repeat_perturbed(i):ends_repeat_perturbed(i);
-    plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'b', 'LineWidth', 1.5);
-end
-for i = 1:length(starts_perturbed)
-    idx = starts_perturbed(i):ends_perturbed(i);
-    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1.5);
-end
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Repeating vs Perturbed')
-xlim([-180 180])
-ylim([-90 90])
-grid on
-hold off
 
 %% 4.a. Elements History & Filtering
 % This section computes the history of Keplerian elements from the perturbed orbit
@@ -422,7 +451,7 @@ T_orbital = 2*pi*sqrt(kep_parameters(1)^3/mu_E);
 points_per_orbit = floor(T_orbital);
 
 % Plot geometric Keplerian elements
-figure('Name','Geometric Keplerian Elements History - Corrected')
+figure('Name','Geometric Keplerian Elements History')
 subplot(3,1,1)
 hold on
 plot(tspan, keplerian_history(:,1), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
@@ -454,7 +483,7 @@ legend('Location','best')
 grid on
 
 % Plot orientation Keplerian elements
-figure('Name','Orientation Keplerian Elements History - Corrected')
+figure('Name','Orientation Keplerian Elements History')
 subplot(3,1,1)
 hold on
 plot(tspan, keplerian_history(:,4), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
@@ -484,6 +513,9 @@ xlabel('Time')
 ylabel('θ [deg]')
 legend('Location','best')
 grid on
+
+fprintf('Plotting Keplerian Elements History from Perturbed Orbit.\n');
+fprintf('----------------------------------------\n');
 
 %% 6.a. Low-Pass Filtering
 % This section applies moving average filtering to smooth the Keplerian elements
@@ -557,7 +589,7 @@ else
 end
 
 % Plot filtered geometric elements
-figure('Name','Geometric Keplerian Elements History - Corrected')
+figure('Name','Geometric Keplerian Elements History')
 subplot(3,1,1)
 hold on
 plot(tspan_plot, a_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
@@ -626,6 +658,9 @@ ylabel('θ [deg]')
 legend('Location','best')
 grid on
 
+fprintf('Plotting Filtered Keplerian Elements History from Perturbed Orbit.\n');
+fprintf('----------------------------------------\n');
+
 %% 3.b. Integration using Gauss Planetary Equations
 % This section integrates the Keplerian elements directly using Gauss planetary
 % equations with perturbations, providing an alternative to Cartesian integration.
@@ -650,6 +685,9 @@ for i = 1:length(TGauss)
     r_gauss(i,:) = r_temp';
     v_gauss(i,:) = v_temp';
 end
+
+fprintf('Integrating Orbit using Gauss Planetary Equations with J2 and Drag.\n');
+fprintf('----------------------------------------\n');
 
 %% 3.c. Compare with Cartesian integration
 % This section compares the results from Gauss and Cartesian integrations by
@@ -679,6 +717,8 @@ if length(TPerturbed) == length(TGauss)
     fprintf('Mean position difference: %.6f km\n', mean(pos_magnitude_diff));
 end
 
+fprintf('Comparing Gauss and Cartesian Integration Results.\n');
+fprintf('----------------------------------------\n');
 %% Analyze secular rates from Gauss equations
 % This section computes and plots the secular rates of change for Keplerian elements
 % from the Gauss integration, filtering them to isolate long-term trends.
@@ -735,6 +775,9 @@ ylabel('dω/dt [deg/year]');
 title('Argument of Perigee Rate');
 grid on;
 
+fprintf('Analyzing Secular Rates from Gauss Integration.\n');
+fprintf('----------------------------------------\n');
+
 %% Theoretical secular rates from J2 (for comparison)
 % This section calculates analytical secular rates due to J2 perturbations
 % and compares them with numerical results from Gauss integration.
@@ -760,6 +803,8 @@ fprintf('\nNumerical secular rates (average):\n');
 fprintf('  dΩ/dt: %.6f deg/day\n', rad2deg(mean_dOmega_num) * 86400);
 fprintf('  dω/dt: %.6f deg/day\n', rad2deg(mean_domega_num) * 86400);
 
+fprintf('----------------------------------------\n');
+
 %% 5. Animation
 % This section creates an animated visualization of the perturbed orbit trajectory
 % over the Earth sphere, using a loop to plot points incrementally for controlled speed.
@@ -777,7 +822,7 @@ for i = 1:length(YPerturbed)
     start_idx = max(1, i - comet_length + 1);
     set(h, 'XData', YPerturbed(start_idx:i,1), 'YData', YPerturbed(start_idx:i,2), 'ZData', YPerturbed(start_idx:i,3));
     drawnow;
-    pause(0.01); % Short pause for faster animation; adjust as needed
+    pause(0.0001); % Short pause for faster animation; adjust as needed
 end
 
 hold off
@@ -901,14 +946,12 @@ function plot_ground_track(lon, lat, color, style)
 end
 
 plot_ground_track(gtrack_data_eph_tank(:,3), gtrack_data_eph_tank(:,4), 'k', '--');
-plot_ground_track(gtrack_data_gauss_tank(:,3), gtrack_data_gauss_tank(:,4), 'r', '-');
 plot_ground_track(gtrack_data_eph_titan(:,3), gtrack_data_eph_titan(:,4), 'b', '.-');
-plot_ground_track(gtrack_data_gauss_titan(:,3), gtrack_data_gauss_titan(:,4), 'm', '-');
 
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track Comparison')
-legend('BREEZE-M DEB (TANK) Ephemeris', 'BREEZE-M DEB (TANK) Gauss', 'TITAN 3C TRANSTAGE DEB Ephemeris', 'TITAN 3C TRANSTAGE DEB Gauss', 'Location', 'best')
+legend('BREEZE-M DEB (TANK)', 'TITAN 3C TRANSTAGE DEB', 'Location', 'best')
 xlim([-180 180])
 ylim([-90 90])
 grid on
@@ -917,102 +960,54 @@ hold off
 
 
 
-% Plot Keplerian elements history for Tank
 figure('Name','Keplerian Elements History for Tank, Ephemeris vs Gaussian Theory')
 subplot(6,1,1)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,1))
-hold on
-plot(utc_time_tank, KepGauss_tank(:,1), 'r--')
-hold off
 title('Semi-major Axis')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,2)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,2))
-hold on
-plot(utc_time_tank, KepGauss_tank(:,2), 'r--')
-hold off
 title('Eccentricity')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,3)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,3)))
-hold on
-plot(utc_time_tank, rad2deg(KepGauss_tank(:,3)), 'r--')
-hold off
 title('Inclination')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,4)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,4)))
-hold on
-plot(utc_time_tank, rad2deg(KepGauss_tank(:,4)), 'r--')
-hold off
 title('Right Ascension Ascending Node [deg]')
-legend('Ephemeris', 'Gauss Theory')
 
 subplot(6,1,5)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,5)))
-hold on
-plot(utc_time_tank, rad2deg(KepGauss_tank(:,5)), 'r--')
-hold off
 title('Argument of Perigee [deg]')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,6)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,6)))
-hold on
-plot(utc_time_tank, rad2deg(KepGauss_tank(:,6)), 'r--')
-hold off
 title('True Anomaly [deg]')
-legend('Ephemeris', 'Gauss Theory')
-
-% Plot Keplerian elements history for Titan
+% 
+% 
+% 
 figure('Name','Keplerian Elements History for Titan, Ephemeris vs Gaussian Theory')
 subplot(6,1,1)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,1))
-hold on
-plot(utc_time_titan, KepGauss_titan(:,1), 'r--')
-hold off
 title('Semi-major Axis')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,2)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,2))
-hold on
-plot(utc_time_titan, KepGauss_titan(:,2), 'r--')
-hold off
 title('Eccentricity')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,3)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,3)))
-hold on
-plot(utc_time_titan, rad2deg(KepGauss_titan(:,3)), 'r--')
-hold off
 title('Inclination')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,4)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,4)))
-hold on
-plot(utc_time_titan, rad2deg(KepGauss_titan(:,4)), 'r--')
-hold off
 title('Right Ascension Ascending Node [deg]')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,5)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,5)))
-hold on
-plot(utc_time_titan, rad2deg(KepGauss_titan(:,5)), 'r--')
-hold off
 title('Argument of Perigee [deg]')
-legend('Ephemeris', 'Gauss Theory')
-
+% 
 subplot(6,1,6)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,6)))
-hold on
-plot(utc_time_titan, rad2deg(KepGauss_titan(:,6)), 'r--')
-hold off
 title('True Anomaly [deg]')
-legend('Ephemeris', 'Gauss Theory')
