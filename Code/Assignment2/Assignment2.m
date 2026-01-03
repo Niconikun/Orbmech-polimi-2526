@@ -354,7 +354,7 @@ hold off
 fprintf('Plotting Ground Track for Nominal, Repeating, and Perturbed Orbits.\n');
 fprintf('----------------------------------------\n');
 
-%% Ground Track Nominal Orbit Only
+%% Ground Track Nominal & Perturbed Orbit for 1 period, 1 day, 12 days
 % Plot ground track for nominal orbit only - 1 orbit period
 figure('Name','Ground Track Nominal Orbit - 1 Orbit Period')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
@@ -364,12 +364,21 @@ hold on
 idx_1orbit = TNominal <= T_nominal;
 lon_1orbit = lon_nominal(idx_1orbit);
 lat_1orbit = lat_nominal(idx_1orbit);
+lon_1orbit_perturbed = lon_perturbed(idx_1orbit);
+lat_1orbit_perturbed = lat_perturbed(idx_1orbit);
 wrap_indices_1orbit = find(abs(diff(lon_1orbit)) > 180);
+wrap_indices_1orbit_perturbed = find(abs(diff(lon_1orbit_perturbed)) > 180);
 starts_1orbit = [1; wrap_indices_1orbit + 1];
+starts_1orbit_perturbed = [1; wrap_indices_1orbit_perturbed + 1];
 ends_1orbit = [wrap_indices_1orbit; length(lon_1orbit)];
+ends_1orbit_perturbed = [wrap_indices_1orbit_perturbed; length(lon_1orbit_perturbed)];
 for i = 1:length(starts_1orbit)
     idx = starts_1orbit(i):ends_1orbit(i);
     plot(lon_1orbit(idx), lat_1orbit(idx), 'r', 'LineWidth', 1);
+end
+for i = 1:length(starts_1orbit_perturbed)
+    idx = starts_1orbit_perturbed(i):ends_1orbit_perturbed(i);
+    plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1);
 end
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
@@ -387,13 +396,22 @@ hold on
 % Find indices for 1 day (86400 seconds)
 idx_1day = TNominal <= 86400;
 lon_1day = lon_nominal(idx_1day);
+lon_1day_perturbed = lon_perturbed(idx_1day);
 lat_1day = lat_nominal(idx_1day);
+lat_1day_perturbed = lat_perturbed(idx_1day);
 wrap_indices_1day = find(abs(diff(lon_1day)) > 180);
+wrap_indices_1day_perturbed = find(abs(diff(lon_1day_perturbed)) > 180);
 starts_1day = [1; wrap_indices_1day + 1];
+starts_1day_perturbed = [1; wrap_indices_1day_perturbed + 1];
 ends_1day = [wrap_indices_1day; length(lon_1day)];
+ends_1day_perturbed = [wrap_indices_1day_perturbed; length(lon_1day_perturbed)];
 for i = 1:length(starts_1day)
     idx = starts_1day(i):ends_1day(i);
     plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1);
+end
+for i = 1:length(starts_1day_perturbed)
+    idx = starts_1day_perturbed(i):ends_1day_perturbed(i);
+    plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1);
 end
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
@@ -412,6 +430,10 @@ for i = 1:length(starts_nominal)
     idx = starts_nominal(i):ends_nominal(i);
     plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
 end
+for i = 1:length(starts_perturbed)
+    idx = starts_perturbed(i):ends_perturbed(i);
+    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1);
+end
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track - Nominal Orbit (12 Days)')
@@ -420,7 +442,7 @@ ylim([-90 90])
 grid on
 hold off
 
-fprintf('Plotting Nominal Ground Track with different periods.\n');
+fprintf('Plotting Nominal & Perturbed Ground Track with different periods.\n');
 fprintf('----------------------------------------\n');
 
 
@@ -822,7 +844,7 @@ for i = 1:length(YPerturbed)
     start_idx = max(1, i - comet_length + 1);
     set(h, 'XData', YPerturbed(start_idx:i,1), 'YData', YPerturbed(start_idx:i,2), 'ZData', YPerturbed(start_idx:i,3));
     drawnow;
-    pause(0.0001); % Short pause for faster animation; adjust as needed
+    pause(0.000001); % Short pause for faster animation; adjust as needed
 end
 
 hold off
