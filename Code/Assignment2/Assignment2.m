@@ -628,20 +628,20 @@ fprintf('----------------------------------------\n');
 fprintf('Plotting Nominal & Perturbed Ground Track with different periods.\n');
 fprintf('----------------------------------------\n');
 
-%% Perturbed Orbit for a span of 2 years
+%% Keplerian Elements
+
+% Perturbed Orbit for a span of 2 years
 % This section integrates the orbit under J2 and drag perturbations for a span
 % of 2 years, extracts position/velocity data, and prepares for Keplerian
 % elements history computation.
-tspan = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
-[TPerturbedLong, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan, y_perturbed_initial, options);
+tspan_2years = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
+tStart_2years = tic;
+[TPerturbedLong, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_2years, y_perturbed_initial, options);
 r_perturbed_2years = YPerturbedLong(:,1:3);
 v_perturbed_2years = YPerturbedLong(:,4:6);
 fprintf('Calculating Perturbed Orbit with J2 and Drag for 2 years using Cartesian.\n');
 fprintf('----------------------------------------\n');
 
-
-
-%% Elements History & Filtering
 % This section computes the history of Keplerian elements from the perturbed orbit
 % by converting Cartesian states back to Keplerian at each time step, unwraps the
 % true anomaly for continuity, and prepares for plotting and filtering.
@@ -665,14 +665,113 @@ keplerian_history(:,3) = unwrap(keplerian_history(:,3));
 keplerian_history(:,4) = unwrap(keplerian_history(:,4));
 keplerian_history(:,5) = unwrap(keplerian_history(:,5));
 keplerian_history(:,6) = unwrap(keplerian_history(:,6));
-
+tEnd_2years = toc(tStart_2years);
+fprintf('Time taken for 2 years integration using Cartesian: %.2f seconds.\n', tEnd_2years);
+fprintf('----------------------------------------\n');
 % Calculate orbital period and points per orbit
 T_orbital = 2*pi*sqrt(kep_parameters(1)^3/mu_E);
 points_per_orbit = floor(T_orbital);
 
+% Integration using Gauss Planetary Equations for a span of 2 years
+% This section integrates the Keplerian elements directly using Gauss planetary
+% equations with perturbations, providing an alternative to Cartesian integration.
+
+% Initial Keplerian elements as column vector
+tStart_Gauss = tic;
+kep_initial = kep_parameters';
+
+% Perturbation function handle
+a_per_func = @(t, kep) j2_drag_perturbations_RSW(t, kep, mu_E, J2_E, R_E, omega_E, c_d, AreaOverMass);
+
+% Time span for Gauss integration
+tspan_gauss = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
+
+% Integrate Gauss equations
+[TGauss, KepGauss] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), tspan_gauss, kep_initial, options);
+
+% Convert Gauss results to Cartesian for comparison
+r_gauss = zeros(length(TGauss), 3);
+v_gauss = zeros(length(TGauss), 3);
+for i = 1:length(TGauss)
+    [r_temp, v_temp] = kep2car(KepGauss(i,:)', mu_E);
+    r_gauss(i,:) = r_temp';
+    v_gauss(i,:) = v_temp';
+end
+
+fprintf('Integrating Orbit using Gauss Planetary Equations with J2 and Drag.\n');
+tEnd_Gauss = toc(tStart_Gauss);
+fprintf('Time taken for 2 years integration using Gauss: %.2f seconds.\n', tEnd_Gauss);
+fprintf('----------------------------------------\n');
+
+%% Compare with Cartesian integration
+% This section compares the results from Gauss and Cartesian integrations by
+% calculating position differences and plotting them.
+
+% Calculate differences if time spans match
+if length(TPerturbed) == length(TGauss)
+    pos_diff = r_perturbed_2years - r_gauss;
+    pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
+    
+    a_diff = KepGauss(:,1) - keplerian_history(:,1);
+    e_diff = KepGauss(:,2) - keplerian_history(:,2);
+    i_diff = KepGauss(:,3) - keplerian_history(:,3);
+    Omega_diff = KepGauss(:,4) - keplerian_history(:,4);
+    omega_diff = KepGauss(:,5) - keplerian_history(:,5);
+    TA_diff = KepGauss(:,6) - keplerian_history(:,6);
+
+    figure('Name', 'Comparison: Cartesian vs Gauss Integration in Keplerian Elements');
+    subplot(2,3,1);
+    plot(TGauss./86400, a_diff);
+    xlabel('Time [days]');
+    ylabel('Semi-major Axis Difference [km]');
+    title('Semi-major Axis Discrepancy');
+    grid on;
+    
+    subplot(2,3,2);
+    plot(TGauss./86400, e_diff);
+    xlabel('Time [days]');
+    ylabel('Eccentricity Difference [-]');
+    title('Eccentricity Discrepancy');
+    grid on;
+
+    subplot(2,3,3);
+    plot(TGauss./86400, rad2deg(i_diff));
+    xlabel('Time [days]');
+    ylabel('Inclination Difference [deg]');
+    title('Inclination Discrepancy');
+    grid on;
+
+    subplot(2,3,4);
+    plot(TGauss./86400, rad2deg(Omega_diff));
+    xlabel('Time [days]');
+    ylabel('RAAN Difference [deg]');
+    title('RAAN Discrepancy');
+    grid on;
+
+    subplot(2,3,5);
+    plot(TGauss./86400, rad2deg(omega_diff));
+    xlabel('Time [days]');
+    ylabel('Argument of Periapsis Difference [deg]');
+    title('Argument of Periapsis Discrepancy');
+    grid on;
+
+    subplot(2,3,6);
+    plot(TGauss./86400, rad2deg(TA_diff));
+    xlabel('Time [days]');
+    ylabel('True Anomaly Difference [deg]');
+    title('True Anomaly Discrepancy');
+    grid on;
+    
+    fprintf('Maximum position difference: %.6f km\n', max(pos_magnitude_diff));
+    fprintf('Mean position difference: %.6f km\n', mean(pos_magnitude_diff));
+end
+
+fprintf('Comparing Gauss and Cartesian Integration Results.\n');
+fprintf('----------------------------------------\n');
+
 % Plot geometric Keplerian elements
 figure('Name','Geometric Keplerian Elements History')
-subplot(3,1,1)
+subplot(2,3,1)
 hold on
 plot(tspan./86400, keplerian_history(:,1), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -682,7 +781,7 @@ ylabel('a [km]')
 legend('Location','best')
 grid on
 
-subplot(3,1,2)
+subplot(2,3,2)
 hold on
 plot(tspan./86400, rad2deg(keplerian_history(:,3)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -692,7 +791,7 @@ ylabel('i [deg]')
 legend('Location','best')
 grid on
 
-subplot(3,1,3)
+subplot(2,3,3)
 hold on
 plot(tspan./86400, keplerian_history(:,2), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -702,9 +801,7 @@ ylabel('e [-]')
 legend('Location','best')
 grid on
 
-% Plot orientation Keplerian elements
-figure('Name','Orientation Keplerian Elements History')
-subplot(3,1,1)
+subplot(2,3,4)
 hold on
 plot(tspan./86400, rad2deg(keplerian_history(:,4)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -714,7 +811,7 @@ ylabel('Ω [deg]')
 legend('Location','best')
 grid on
 
-subplot(3,1,2)
+subplot(2,3,5)
 hold on
 plot(tspan./86400, rad2deg(keplerian_history(:,5)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -724,7 +821,7 @@ ylabel('ω [deg]')
 legend('Location','best')
 grid on
 
-subplot(3,1,3)
+subplot(2,3,6)
 hold on
 plot(tspan./86400, rad2deg(keplerian_history(:,6)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
@@ -734,7 +831,7 @@ ylabel('θ [deg]')
 legend('Location','best')
 grid on
 
-fprintf('Plotting Keplerian Elements History from Perturbed Orbit.\n');
+fprintf('Plotting Keplerian Elements History from Perturbed Orbit (Cartesian Integration).\n');
 fprintf('----------------------------------------\n');
 
 %% 6.a. Low-Pass Filtering
@@ -881,64 +978,9 @@ grid on
 fprintf('Plotting Filtered Keplerian Elements History from Perturbed Orbit.\n');
 fprintf('----------------------------------------\n');
 
-%% 3.b. Integration using Gauss Planetary Equations for a span of 2 years
-% This section integrates the Keplerian elements directly using Gauss planetary
-% equations with perturbations, providing an alternative to Cartesian integration.
 
-% Initial Keplerian elements as column vector
-kep_initial = kep_parameters';
 
-% Perturbation function handle
-a_per_func = @(t, kep) j2_drag_perturbations_RSW(t, kep, mu_E, J2_E, R_E, omega_E, c_d, AreaOverMass);
 
-% Time span for Gauss integration
-tspan_gauss = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
-
-% Integrate Gauss equations
-[TGauss, KepGauss] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), tspan_gauss, kep_initial, options);
-
-% Convert Gauss results to Cartesian for comparison
-r_gauss = zeros(length(TGauss), 3);
-v_gauss = zeros(length(TGauss), 3);
-for i = 1:length(TGauss)
-    [r_temp, v_temp] = kep2car(KepGauss(i,:)', mu_E);
-    r_gauss(i,:) = r_temp';
-    v_gauss(i,:) = v_temp';
-end
-
-fprintf('Integrating Orbit using Gauss Planetary Equations with J2 and Drag.\n');
-fprintf('----------------------------------------\n');
-
-%% 3.c. Compare with Cartesian integration
-% This section compares the results from Gauss and Cartesian integrations by
-% calculating position differences and plotting them.
-
-% Calculate differences if time spans match
-if length(TPerturbed) == length(TGauss)
-    pos_diff = r_perturbed_2years - r_gauss;
-    pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
-    
-    figure('Name', 'Comparison: Cartesian vs Gauss Integration');
-    subplot(2,1,1);
-    plot(TGauss./86400, pos_magnitude_diff);
-    xlabel('Time [days]');
-    ylabel('Position Difference [km]');
-    title('Position Discrepancy between Integration Methods');
-    grid on;
-    
-    subplot(2,1,2);
-    semilogy(TGauss./86400, pos_magnitude_diff);
-    xlabel('Time [days]');
-    ylabel('Position Difference [km] (log scale)');
-    title('Logarithmic Scale');
-    grid on;
-    
-    fprintf('Maximum position difference: %.6f km\n', max(pos_magnitude_diff));
-    fprintf('Mean position difference: %.6f km\n', mean(pos_magnitude_diff));
-end
-
-fprintf('Comparing Gauss and Cartesian Integration Results.\n');
-fprintf('----------------------------------------\n');
 %% Analyze secular rates from Gauss equations
 % This section computes and plots the secular rates of change for Keplerian elements
 % from the Gauss integration, filtering them to isolate long-term trends.
@@ -1128,56 +1170,92 @@ end
 fprintf('Plotting results...\n');
 
 figure('Name','Keplerian Elements History for Tank, Ephemeris vs Gaussian Theory')
-subplot(6,1,1)
+subplot(2,3,1)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,1))
-title('Semi-major Axis')
+title('Semi-major Axis [km]')
+xlabel('Time')
+ylabel('a [km]')
+grid on
 % 
-subplot(6,1,2)
+subplot(2,3,2)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,2))
-title('Eccentricity')
+title('Eccentricity [-]')
+xlabel('Time')
+ylabel('e [-]')
+grid on
 % 
-subplot(6,1,3)
+subplot(2,3,3)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,3)))
-title('Inclination')
+title('Inclination [deg]')
+xlabel('Time')
+ylabel('i [deg]')
+grid on
 % 
-subplot(6,1,4)
+subplot(2,3,4)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,4)))
 title('Right Ascension Ascending Node [deg]')
+xlabel('Time')
+ylabel('Ω [deg]')
+%
 
-subplot(6,1,5)
+subplot(2,3,5)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,5)))
 title('Argument of Perigee [deg]')
+xlabel('Time')
+ylabel('ω [deg]')
+grid on
 % 
-subplot(6,1,6)
+subplot(2,3,6)
 plot(utc_time_tank,rad2deg(keplerian_elements_eph_tank(:,6)))
 title('True Anomaly [deg]')
+xlabel('Time')
+ylabel('θ [deg]')
+grid on
 % 
 % 
 % 
 figure('Name','Keplerian Elements History for Titan, Ephemeris vs Gaussian Theory')
-subplot(6,1,1)
+subplot(2,3,1)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,1))
-title('Semi-major Axis')
+title('Semi-major Axis [km]')
+xlabel('Time')
+ylabel('a [km]')
+grid on
 % 
-subplot(6,1,2)
+subplot(2,3,2)
 plot(utc_time_titan,keplerian_elements_eph_titan(:,2))
-title('Eccentricity')
+title('Eccentricity [-]')
+xlabel('Time')
+ylabel('e [-]')
+grid on
 % 
-subplot(6,1,3)
+subplot(2,3,3)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,3)))
-title('Inclination')
+title('Inclination [deg]')
+xlabel('Time')
+ylabel('i [deg]')
+grid on
 % 
-subplot(6,1,4)
+subplot(2,3,4)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,4)))
 title('Right Ascension Ascending Node [deg]')
+xlabel('Time')
+ylabel('Ω [deg]')
+grid on
 % 
-subplot(6,1,5)
+subplot(2,3,5)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,5)))
 title('Argument of Perigee [deg]')
+xlabel('Time')
+ylabel('ω [deg]')
+grid on
 % 
-subplot(6,1,6)
+subplot(2,3,6)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,6)))
 title('True Anomaly [deg]')
+xlabel('Time')
+ylabel('θ [deg]')
+grid on
 
 %% Animation
 % This section creates an animated visualization of the perturbed orbit trajectory
@@ -1216,14 +1294,15 @@ for i = 1:step:length(YPerturbed_1day)
     radial_vec = pos / norm(pos); % Unit vector radial outward
     set(h_radial, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', radial_vec(1)*1000, 'VData', radial_vec(2)*1000, 'WData', radial_vec(3)*1000); % Scaled for visibility
     
-    % Perpendicular arrow: normal to velocity in orbital plane (approximate as cross product of position and velocity)
-    vel = YPerturbed_1day(i,4:6);
-    vel_vevc = vel / norm(vel); % Unit velocity vector
-    set(h_vel, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', vel_vevc(1)*1000, 'VData', vel_vevc(2)*1000, 'WData', vel_vevc(3)*1000); % Scaled for visibility
-
     perp_vec = cross(pos, vel); % Perpendicular to both position and velocity
     perp_vec = perp_vec / norm(perp_vec); % Unit vector
     set(h_perp, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', perp_vec(1)*1000, 'VData', perp_vec(2)*1000, 'WData', perp_vec(3)*1000); % Scaled for visibility
+
+    % Perpendicular arrow: normal to velocity in orbital plane (approximate as cross product of position and velocity)
+    vel = cross(perp_vec, pos); % Approximate velocity direction
+    vel_vevc = vel / norm(vel); % Unit velocity vector
+    set(h_vel, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', vel_vevc(1)*1000, 'VData', vel_vevc(2)*1000, 'WData', vel_vevc(3)*1000); % Scaled for visibility
+
     
     drawnow;
     pause(0.000001); % Short pause; adjust for speed

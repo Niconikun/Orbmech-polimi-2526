@@ -19,7 +19,7 @@ function dkep_dt = gauss_planetary_equations(~, kep, mu, a_per_func)
     a = kep(1);         % Semi-major axis [km]
     e = kep(2);         % Eccentricity
     i = kep(3);         % Inclination [rad]
-    Omega = kep(4);     % RAAN [rad]
+    %Omega = kep(4);     % RAAN [rad]
     omega = kep(5);     % Argument of perigee [rad]
     theta = kep(6);     % True anomaly [rad]
     
