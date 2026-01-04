@@ -69,7 +69,7 @@ options = odeset('RelTol', 1e-13, 'AbsTol', 1e-14);
 fprintf('Setting up. Please wait...\n');
 fprintf('----------------------------------------\n');
 
-%% 1. Nominal Orbit
+%% Nominal Orbit
 % This section computes and visualizes the unperturbed two-body problem orbit.
 % It starts by converting initial Keplerian elements to Cartesian coordinates,
 % defines the time span based on the orbital period, integrates the equations
@@ -120,7 +120,7 @@ fprintf('Altitude of the Apocenter: %4f km\n', kep_parameters(1)*(1+kep_paramete
 fprintf('Orbital Period: %4f minutes\n', T_nominal/60);
 fprintf('----------------------------------------\n');
 
-%% 2.a. Ground Track of Nominal Orbit
+%% Ground Track of Nominal Orbit
 % This section calculates the ground track for the nominal orbit by converting
 % Cartesian positions to geodetic coordinates (longitude and latitude) over time,
 % accounting for Earth's rotation. It stores the results in a data array for plotting.
@@ -151,7 +151,7 @@ end
 
 fprintf('Calculating Nominal Ground Track.\n');
 fprintf('----------------------------------------\n');
-%% 2.b. Repeating Ground Track
+%% Repeating Ground Track
 % This section computes a repeating ground track by adjusting the semi-major axis
 % to achieve resonance with Earth's rotation, integrates the unperturbed orbit,
 % and calculates the corresponding ground track data.
@@ -195,8 +195,7 @@ for i = 1:length(TRepeat)
 end
 
 fprintf('Calculating Repeating Nominal Ground Track assuming k = 1 and m = 12.\n');
-fprintf('Nominal Semi-Major Axis: %4f km\n', a_nominal);
-fprintf('Repeating Semi-Major Axis: %4f km\n', a_repeat);
+
 fprintf('----------------------------------------\n');
 
 %% Repeating Perturbed Ground Track
@@ -242,9 +241,12 @@ for i = 1:length(TRepeatPerturbed)
 end
 
 fprintf('Calculating Repeating Perturbed Ground Track assuming k = 1 and m = 12.\n');
+fprintf('Nominal Semi-Major Axis: %4f km\n', a_nominal);
+fprintf('Repeating Semi-Major Axis: %4f km\n', a_repeat);
+fprintf('Repeating Perturbed Semi-Major Axis: %4f km\n', a_repeat_perturbed);
 fprintf('----------------------------------------\n');
 
-%% 3.a. Perturbed Orbit (J2 + Drag)
+%% Perturbed Orbit (J2 + Drag)
 % This section integrates the orbit under J2 and atmospheric drag perturbations,
 % plots the 3D trajectory, and extracts position/velocity data for further analysis.
 
@@ -255,7 +257,7 @@ y_perturbed_initial = [r_perturbed_initial; v_perturbed_initial];
 % Calculate orbital period and time span
 a_perturbed_initial = kep_parameters(1);
 T_perturbed_initial = 2*pi*sqrt(a_perturbed_initial^3/mu_E);
-tspan_perturbed = linspace(0, 3*T_groundtrack, floor(T_groundtrack));
+tspan_perturbed = linspace(0, 5*T_groundtrack, floor(T_groundtrack));
 
 % Integrate with perturbations
 [TPerturbed, YPerturbed] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_perturbed, y_perturbed_initial, options);
@@ -282,7 +284,7 @@ grid on;
 view(45,30);
 legend('Orbit','Earth');
 colorbar;
-caxis([1 length(YPerturbed)]);
+caxis([1/(60*24*60) length(YPerturbed)/(60*24*60)]); % Set color axis to represent time in days
 
 % Add colorbar for orbit coloring by index
 
@@ -626,18 +628,30 @@ fprintf('----------------------------------------\n');
 fprintf('Plotting Nominal & Perturbed Ground Track with different periods.\n');
 fprintf('----------------------------------------\n');
 
+%% Perturbed Orbit for a span of 2 years
+% This section integrates the orbit under J2 and drag perturbations for a span
+% of 2 years, extracts position/velocity data, and prepares for Keplerian
+% elements history computation.
+tspan = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
+[~, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan, y_perturbed_initial, options);
+r_perturbed_2years = YPerturbedLong(:,1:3);
+v_perturbed_2years = YPerturbedLong(:,4:6);
+fprintf('Calculating Perturbed Orbit with J2 and Drag for 2 years.\n');
+fprintf('----------------------------------------\n');
 
-%% 4.a. Elements History & Filtering
+
+
+%% Elements History & Filtering
 % This section computes the history of Keplerian elements from the perturbed orbit
 % by converting Cartesian states back to Keplerian at each time step, unwraps the
 % true anomaly for continuity, and prepares for plotting and filtering.
 
 % Initialize array for Keplerian elements history
-keplerian_history = zeros(length(r_perturbed(:,1)),6);
+keplerian_history = zeros(length(r_perturbed_2years(:,1)),6);
 
 % Convert each Cartesian state to Keplerian elements
 for i=1:length(keplerian_history(:,1))
-    kep_temp = car2kep(r_perturbed(i,:),v_perturbed(i,:),mu_E);
+    kep_temp = car2kep(r_perturbed_2years(i,:),v_perturbed_2years(i,:),mu_E);
     keplerian_history(i,1) = kep_temp(1); % a
     keplerian_history(i,2) = kep_temp(2); % e
     keplerian_history(i,3) = kep_temp(3); % i
@@ -647,6 +661,9 @@ for i=1:length(keplerian_history(:,1))
 end
 
 % Unwrap true anomaly for smooth plotting
+keplerian_history(:,3) = unwrap(keplerian_history(:,3));
+keplerian_history(:,4) = unwrap(keplerian_history(:,4));
+keplerian_history(:,5) = unwrap(keplerian_history(:,5));
 keplerian_history(:,6) = unwrap(keplerian_history(:,6));
 
 % Calculate orbital period and points per orbit
@@ -864,7 +881,7 @@ grid on
 fprintf('Plotting Filtered Keplerian Elements History from Perturbed Orbit.\n');
 fprintf('----------------------------------------\n');
 
-%% 3.b. Integration using Gauss Planetary Equations
+%% 3.b. Integration using Gauss Planetary Equations for a span of 2 years
 % This section integrates the Keplerian elements directly using Gauss planetary
 % equations with perturbations, providing an alternative to Cartesian integration.
 
@@ -875,7 +892,7 @@ kep_initial = kep_parameters';
 a_per_func = @(t, kep) j2_drag_perturbations_RSW(t, kep, mu_E, J2_E, R_E, omega_E, c_d, AreaOverMass);
 
 % Time span for Gauss integration
-tspan_gauss = linspace(0, T_groundtrack, floor(T_groundtrack));
+tspan_gauss = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
 
 % Integrate Gauss equations
 [TGauss, KepGauss] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), tspan_gauss, kep_initial, options);
@@ -898,7 +915,7 @@ fprintf('----------------------------------------\n');
 
 % Calculate differences if time spans match
 if length(TPerturbed) == length(TGauss)
-    pos_diff = r_perturbed - r_gauss;
+    pos_diff = r_perturbed_2years - r_gauss;
     pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
     
     figure('Name', 'Comparison: Cartesian vs Gauss Integration');
