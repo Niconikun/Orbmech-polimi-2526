@@ -633,10 +633,10 @@ fprintf('----------------------------------------\n');
 % of 2 years, extracts position/velocity data, and prepares for Keplerian
 % elements history computation.
 tspan = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
-[~, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan, y_perturbed_initial, options);
+[TPerturbedLong, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan, y_perturbed_initial, options);
 r_perturbed_2years = YPerturbedLong(:,1:3);
 v_perturbed_2years = YPerturbedLong(:,4:6);
-fprintf('Calculating Perturbed Orbit with J2 and Drag for 2 years.\n');
+fprintf('Calculating Perturbed Orbit with J2 and Drag for 2 years using Cartesian.\n');
 fprintf('----------------------------------------\n');
 
 
@@ -1204,7 +1204,7 @@ h_traj = plot3(NaN, NaN, NaN, 'r-', 'LineWidth', 2); % Trajectory handle
 h_radial = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'g', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Radial arrow handle
 h_vel = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'r', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Velocity arrow handle
 h_perp = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'b', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Perpendicular arrow handle
-comet_length = 1000; % Length of the comet tail
+comet_length = 300; % Length of the comet tail
 step = 10; % Step size for faster animation (increase to skip points)
 for i = 1:step:length(YPerturbed_1day)
     start_idx = max(1, i - comet_length + 1);
