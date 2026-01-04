@@ -674,30 +674,30 @@ points_per_orbit = floor(T_orbital);
 figure('Name','Geometric Keplerian Elements History')
 subplot(3,1,1)
 hold on
-plot(tspan, keplerian_history(:,1), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, keplerian_history(:,1), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Semi-major Axis [km]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('a [km]')
 legend('Location','best')
 grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan, keplerian_history(:,3), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, rad2deg(keplerian_history(:,3)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Inclination [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('i [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan, keplerian_history(:,2), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, keplerian_history(:,2), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Eccentricity [-]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('e [-]')
 legend('Location','best')
 grid on
@@ -706,30 +706,30 @@ grid on
 figure('Name','Orientation Keplerian Elements History')
 subplot(3,1,1)
 hold on
-plot(tspan, keplerian_history(:,4), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, rad2deg(keplerian_history(:,4)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Right Ascension Ascending Node [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('Ω [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan, keplerian_history(:,5), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, rad2deg(keplerian_history(:,5)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('Argument of Periapsis [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('ω [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan, keplerian_history(:,6), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan./86400, rad2deg(keplerian_history(:,6)), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
 hold off
 title('True Anomaly [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('θ [deg]')
 legend('Location','best')
 grid on
@@ -812,33 +812,33 @@ end
 figure('Name','Geometric Keplerian Elements History')
 subplot(3,1,1)
 hold on
-plot(tspan_plot, a_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, a_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, a_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, a_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('Semi-major Axis [km]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('a [km]')
 legend('Location','best')
 grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan_plot, i_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, i_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, rad2deg(i_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, rad2deg(i_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('Inclination [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('i [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan_plot, e_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, e_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, e_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, e_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('Eccentricity [-]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('e [-]')
 legend('Location','best')
 grid on
@@ -847,33 +847,33 @@ grid on
 figure('Name','Orientation Keplerian Elements History - Corrected')
 subplot(3,1,1)
 hold on
-plot(tspan_plot, Omega_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, Omega_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, rad2deg(Omega_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, rad2deg(Omega_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('Right Ascension Ascending Node [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('Ω [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,2)
 hold on
-plot(tspan_plot, omega_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, omega_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, rad2deg(omega_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, rad2deg(omega_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('Argument of Periapsis [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('ω [deg]')
 legend('Location','best')
 grid on
 
 subplot(3,1,3)
 hold on
-plot(tspan_plot, TA_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot, TA_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
+plot(tspan_plot./86400, rad2deg(TA_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
+plot(tspan_plot./86400, rad2deg(TA_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
 hold off
 title('True Anomaly [deg]')
-xlabel('Time')
+xlabel('Time [days]')
 ylabel('θ [deg]')
 legend('Location','best')
 grid on
@@ -920,15 +920,15 @@ if length(TPerturbed) == length(TGauss)
     
     figure('Name', 'Comparison: Cartesian vs Gauss Integration');
     subplot(2,1,1);
-    plot(TGauss, pos_magnitude_diff);
-    xlabel('Time [s]');
+    plot(TGauss./86400, pos_magnitude_diff);
+    xlabel('Time [days]');
     ylabel('Position Difference [km]');
     title('Position Discrepancy between Integration Methods');
     grid on;
     
     subplot(2,1,2);
-    semilogy(TGauss, pos_magnitude_diff);
-    xlabel('Time [s]');
+    semilogy(TGauss./86400, pos_magnitude_diff);
+    xlabel('Time [days]');
     ylabel('Position Difference [km] (log scale)');
     title('Logarithmic Scale');
     grid on;
@@ -961,36 +961,36 @@ domega_dt_secular = movmean(domega_dt, window_secular, "Endpoints", "fill");
 % Plot secular rates
 figure('Name', 'Secular Rates from Gauss Equations');
 subplot(3,2,1);
-plot(TGauss, da_dt_secular * 86400 * 365.25);
-xlabel('Time [s]');
+plot(TGauss./86400, da_dt_secular * 86400 * 365.25);
+xlabel('Time [days]');
 ylabel('da/dt [km/year]');
 title('Semi-major Axis Rate');
 grid on;
 
 subplot(3,2,2);
-plot(TGauss, de_dt_secular * 86400 * 365.25);
-xlabel('Time [s]');
+plot(TGauss./86400, de_dt_secular * 86400 * 365.25);
+xlabel('Time [days]');
 ylabel('de/dt [1/year]');
 title('Eccentricity Rate');
 grid on;
 
 subplot(3,2,3);
-plot(TGauss, rad2deg(di_dt_secular) * 86400 * 365.25);
-xlabel('Time [s]');
+plot(TGauss./86400, rad2deg(di_dt_secular) * 86400 * 365.25);
+xlabel('Time [days]');
 ylabel('di/dt [deg/year]');
 title('Inclination Rate');
 grid on;
 
 subplot(3,2,4);
-plot(TGauss, rad2deg(dOmega_dt_secular) * 86400 * 365.25);
-xlabel('Time [s]');
+plot(TGauss./86400, rad2deg(dOmega_dt_secular) * 86400 * 365.25);
+xlabel('Time [days]');
 ylabel('dΩ/dt [deg/year]');
 title('RAAN Rate');
 grid on;
 
 subplot(3,2,5);
-plot(TGauss, rad2deg(domega_dt_secular) * 86400 * 365.25);
-xlabel('Time [s]');
+plot(TGauss./86400, rad2deg(domega_dt_secular) * 86400 * 365.25);
+xlabel('Time [days]');
 ylabel('dω/dt [deg/year]');
 title('Argument of Perigee Rate');
 grid on;
@@ -1025,29 +1025,9 @@ fprintf('  dω/dt: %.6f deg/day\n', rad2deg(mean_domega_num) * 86400);
 
 fprintf('----------------------------------------\n');
 
-%% 5. Animation
-% This section creates an animated visualization of the perturbed orbit trajectory
-% over the Earth sphere, using a loop to plot points incrementally for controlled speed.
 
-figure('Name','Animation')
-hold on
-axis equal
-view(3)
-surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none');
 
-% Custom animation loop for faster speed control
-h = plot3(NaN, NaN, NaN, 'r-', 'LineWidth', 2); % Initialize plot handle
-comet_length = 100; % Length of the comet tail
-for i = 1:length(YPerturbed)
-    start_idx = max(1, i - comet_length + 1);
-    set(h, 'XData', YPerturbed(start_idx:i,1), 'YData', YPerturbed(start_idx:i,2), 'ZData', YPerturbed(start_idx:i,3));
-    drawnow;
-    pause(0.000001); % Short pause for faster animation; adjust as needed
-end
-
-hold off
-
-%% 7. Evolution of two real satellites
+%% Evolution of two real satellites
 % This section analyzes the orbital evolution of two real satellites (BREEZE-M TANK and TITAN 3C TRANSTAGE DEB)
 % over a one-month period by reading ephemeris data, propagating with perturbations using Gauss equations,
 % computing ground tracks, and plotting comparisons of Keplerian elements and ground tracks.
@@ -1147,39 +1127,6 @@ end
 
 fprintf('Plotting results...\n');
 
-figure('Name','Ground Track for Ephemeris')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-
-% Define function for plotting ground tracks with wrapping
-function plot_ground_track(lon, lat, color, style)
-    wrap_indices = find(abs(diff(lon)) > 180);
-    starts = [1; wrap_indices + 1];
-    ends = [wrap_indices; length(lon)];
-    for i = 1:length(starts)
-        idx = starts(i):ends(i);
-        if length(idx) > 1
-            plot(lon(idx), lat(idx), [color style], 'LineWidth', 1.5);
-        end
-    end
-end
-
-plot_ground_track(gtrack_data_eph_tank(:,3), gtrack_data_eph_tank(:,4), 'k', '--');
-plot_ground_track(gtrack_data_eph_titan(:,3), gtrack_data_eph_titan(:,4), 'b', '.-');
-
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track Comparison')
-legend('BREEZE-M DEB (TANK)', 'TITAN 3C TRANSTAGE DEB', 'Location', 'best')
-xlim([-180 180])
-ylim([-90 90])
-grid on
-hold off
-
-
-
-
 figure('Name','Keplerian Elements History for Tank, Ephemeris vs Gaussian Theory')
 subplot(6,1,1)
 plot(utc_time_tank,keplerian_elements_eph_tank(:,1))
@@ -1231,3 +1178,55 @@ title('Argument of Perigee [deg]')
 subplot(6,1,6)
 plot(utc_time_titan,rad2deg(keplerian_elements_eph_titan(:,6)))
 title('True Anomaly [deg]')
+
+%% Animation
+% This section creates an animated visualization of the perturbed orbit trajectory
+% over the Earth sphere for 1 day, using a loop to plot points incrementally for controlled speed.
+% Added radial arrow (from Earth center to satellite) and perpendicular arrow (normal to velocity in orbital plane).
+
+% Select data for 1 day (86400 seconds)
+idx_1day_anim = find(TPerturbed <= 86400);
+YPerturbed_1day = YPerturbed(idx_1day_anim, :);
+TPerturbed_1day = TPerturbed(idx_1day_anim);
+
+figure('Name','Animation - 1 Day')
+hold on
+xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
+xlim([-9000 9000]); ylim([-9000 9000]); zlim([-9000 9000]);
+title('Orbit Animation - 1 Day with J2 and Drag Perturbations');
+axis equal;
+grid on;
+view(45,30);
+surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none');
+
+% Custom animation loop for faster speed control
+h_traj = plot3(NaN, NaN, NaN, 'r-', 'LineWidth', 2); % Trajectory handle
+h_radial = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'g', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Radial arrow handle
+h_vel = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'r', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Velocity arrow handle
+h_perp = quiver3(NaN, NaN, NaN, NaN, NaN, NaN, 'b', 'LineWidth', 2, 'MaxHeadSize', 0.5); % Perpendicular arrow handle
+comet_length = 1000; % Length of the comet tail
+step = 10; % Step size for faster animation (increase to skip points)
+for i = 1:step:length(YPerturbed_1day)
+    start_idx = max(1, i - comet_length + 1);
+    % Update trajectory
+    set(h_traj, 'XData', YPerturbed_1day(start_idx:i,1), 'YData', YPerturbed_1day(start_idx:i,2), 'ZData', YPerturbed_1day(start_idx:i,3));
+    
+    % Radial arrow: from origin to position
+    pos = YPerturbed_1day(i,1:3);
+    radial_vec = pos / norm(pos); % Unit vector radial outward
+    set(h_radial, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', radial_vec(1)*1000, 'VData', radial_vec(2)*1000, 'WData', radial_vec(3)*1000); % Scaled for visibility
+    
+    % Perpendicular arrow: normal to velocity in orbital plane (approximate as cross product of position and velocity)
+    vel = YPerturbed_1day(i,4:6);
+    vel_vevc = vel / norm(vel); % Unit velocity vector
+    set(h_vel, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', vel_vevc(1)*1000, 'VData', vel_vevc(2)*1000, 'WData', vel_vevc(3)*1000); % Scaled for visibility
+
+    perp_vec = cross(pos, vel); % Perpendicular to both position and velocity
+    perp_vec = perp_vec / norm(perp_vec); % Unit vector
+    set(h_perp, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', perp_vec(1)*1000, 'VData', perp_vec(2)*1000, 'WData', perp_vec(3)*1000); % Scaled for visibility
+    
+    drawnow;
+    pause(0.000001); % Short pause; adjust for speed
+end
+
+hold off
