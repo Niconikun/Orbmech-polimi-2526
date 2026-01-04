@@ -195,6 +195,8 @@ for i = 1:length(TRepeat)
 end
 
 fprintf('Calculating Repeating Nominal Ground Track assuming k = 1 and m = 12.\n');
+fprintf('Nominal Semi-Major Axis: %4f km\n', a_nominal);
+fprintf('Repeating Semi-Major Axis: %4f km\n', a_repeat);
 fprintf('----------------------------------------\n');
 
 %% Repeating Perturbed Ground Track
@@ -202,7 +204,7 @@ fprintf('----------------------------------------\n');
 % (J2 and drag), integrating the perturbed equations and calculating coordinates.
 
 % Use the same semi-major axis as repeating orbit
-a_repeat_perturbed = RepeatingGroundTrack(m,k,w_earth_rad,mu_E);
+[a_repeat_perturbed, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(mu_E, R_E, J2_E, w_earth_rad, k, m, kep_parameters(3), kep_parameters(2), 1e-9);
 kep_repeat_perturbed = [a_repeat_perturbed kep_parameters(2) kep_parameters(3) kep_parameters(4) kep_parameters(5) kep_parameters(6)];
 
 % Initial state for perturbed repeating orbit
@@ -253,7 +255,7 @@ y_perturbed_initial = [r_perturbed_initial; v_perturbed_initial];
 % Calculate orbital period and time span
 a_perturbed_initial = kep_parameters(1);
 T_perturbed_initial = 2*pi*sqrt(a_perturbed_initial^3/mu_E);
-tspan_perturbed = linspace(0, T_groundtrack, floor(T_groundtrack));
+tspan_perturbed = linspace(0, 3*T_groundtrack, floor(T_groundtrack));
 
 % Integrate with perturbations
 [TPerturbed, YPerturbed] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_perturbed, y_perturbed_initial, options);
@@ -265,13 +267,24 @@ v_perturbed = YPerturbed(:,4:6);
 % Plot the perturbed orbit
 figure('Name','Perturbed Orbit')
 hold on
-plot3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3))
+%plot3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3))
+scatter3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3), 10, 1:length(YPerturbed), 'filled');
 surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none');
 hold off;
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
 axis equal;
 grid on;
 view(45,30);
+
+title('Orbit Representation - Perturbed Orbit (J2 + Drag)');
+axis equal;
+grid on;
+view(45,30);
+legend('Orbit','Earth');
+colorbar;
+caxis([1 length(YPerturbed)]);
+
+% Add colorbar for orbit coloring by index
 
 
 fprintf('Calculating and Plotting Perturbed Orbit with J2 and Drag.\n');
@@ -324,67 +337,106 @@ wrap_indices_repeat_perturbed = find(abs(diff(lon_repeat_perturbed)) > 180);
 starts_repeat_perturbed = [1; wrap_indices_repeat_perturbed + 1];
 ends_repeat_perturbed = [wrap_indices_repeat_perturbed; length(lon_repeat_perturbed)];
 
-% Plot combined ground tracks
-figure('Name','Ground Track 2BP & Repeating w/ Perturbations')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-
-% Plot segments for each orbit type
-for i = 1:length(starts_nominal)
-    idx = starts_nominal(i):ends_nominal(i);
-    plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
-end
-for i = 1:length(starts_repeat)
-    idx = starts_repeat(i):ends_repeat(i);
-    plot(lon_repeat(idx), lat_repeat(idx), 'b', 'LineWidth', 1.5);
-end
-for i = 1:length(starts_perturbed)
-    idx = starts_perturbed(i):ends_perturbed(i);
-    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1.5);
-end
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track')
-xlim([-180 180])
-ylim([-90 90])
-grid on
-hold off
-
 fprintf('Plotting Ground Track for Nominal, Repeating, and Perturbed Orbits.\n');
 fprintf('----------------------------------------\n');
 
 %% Ground Track Nominal & Perturbed Orbit for 1 period, 1 day, 12 days
 % Plot ground track for nominal orbit only - 1 orbit period
-figure('Name','Ground Track Nominal Orbit - 1 Orbit Period')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-% Find indices for 1 orbit period
-idx_1orbit = TNominal <= T_nominal;
+
+% Extract data for 1 orbit period (nominal and perturbed)
+idx_1orbit = find(TNominal <= T_nominal);
 lon_1orbit = lon_nominal(idx_1orbit);
 lat_1orbit = lat_nominal(idx_1orbit);
 lon_1orbit_perturbed = lon_perturbed(idx_1orbit);
 lat_1orbit_perturbed = lat_perturbed(idx_1orbit);
+
+% Detect discontinuities in longitude for 1 orbit period
 wrap_indices_1orbit = find(abs(diff(lon_1orbit)) > 180);
-wrap_indices_1orbit_perturbed = find(abs(diff(lon_1orbit_perturbed)) > 180);
 starts_1orbit = [1; wrap_indices_1orbit + 1];
-starts_1orbit_perturbed = [1; wrap_indices_1orbit_perturbed + 1];
 ends_1orbit = [wrap_indices_1orbit; length(lon_1orbit)];
+wrap_indices_1orbit_perturbed = find(abs(diff(lon_1orbit_perturbed)) > 180);
+starts_1orbit_perturbed = [1; wrap_indices_1orbit_perturbed + 1];
 ends_1orbit_perturbed = [wrap_indices_1orbit_perturbed; length(lon_1orbit_perturbed)];
+
+% Extract data for 1 day (86400 seconds)
+idx_1day = find(TNominal <= 86400);
+lon_1day = lon_nominal(idx_1day);
+lat_1day = lat_nominal(idx_1day);
+lon_1day_perturbed = lon_perturbed(idx_1day);
+lat_1day_perturbed = lat_perturbed(idx_1day);
+
+% Detect discontinuities in longitude for 1 day
+wrap_indices_1day = find(abs(diff(lon_1day)) > 180);
+starts_1day = [1; wrap_indices_1day + 1];
+ends_1day = [wrap_indices_1day; length(lon_1day)];
+wrap_indices_1day_perturbed = find(abs(diff(lon_1day_perturbed)) > 180);
+starts_1day_perturbed = [1; wrap_indices_1day_perturbed + 1];
+ends_1day_perturbed = [wrap_indices_1day_perturbed; length(lon_1day_perturbed)];
+
+% Extract data for 1 orbit period (repeating and repeating perturbed)
+idx_1orbit_repeat = find(TNominal <= T_nominal);
+lon_1orbit_repeat = lon_repeat(idx_1orbit_repeat);
+lat_1orbit_repeat = lat_repeat(idx_1orbit_repeat);
+lon_1orbit_repeat_perturbed = lon_repeat_perturbed(idx_1orbit_repeat);
+lat_1orbit_repeat_perturbed = lat_repeat_perturbed(idx_1orbit_repeat);
+
+% Detect discontinuities in longitude for 1 orbit period (repeat)
+wrap_indices_1orbit_repeat = find(abs(diff(lon_1orbit_repeat)) > 180);
+starts_1orbit_repeat = [1; wrap_indices_1orbit_repeat + 1];
+ends_1orbit_repeat = [wrap_indices_1orbit_repeat; length(lon_1orbit_repeat)];
+wrap_indices_1orbit_repeat_perturbed = find(abs(diff(lon_1orbit_repeat_perturbed)) > 180);
+starts_1orbit_repeat_perturbed = [1; wrap_indices_1orbit_repeat_perturbed + 1];
+ends_1orbit_repeat_perturbed = [wrap_indices_1orbit_repeat_perturbed; length(lon_1orbit_repeat_perturbed)];
+
+% Extract data for 1 day (repeating and repeating perturbed)
+idx_1day_repeat = find(TNominal <= 86400);
+lon_1day_repeat = lon_repeat(idx_1day_repeat);
+lat_1day_repeat = lat_repeat(idx_1day_repeat);
+lon_1day_repeat_perturbed = lon_repeat_perturbed(idx_1day_repeat);
+lat_1day_repeat_perturbed = lat_repeat_perturbed(idx_1day_repeat);
+
+% Detect discontinuities in longitude for 1 day (repeat)
+wrap_indices_1day_repeat = find(abs(diff(lon_1day_repeat)) > 180);
+starts_1day_repeat = [1; wrap_indices_1day_repeat + 1];
+ends_1day_repeat = [wrap_indices_1day_repeat; length(lon_1day_repeat)];
+wrap_indices_1day_repeat_perturbed = find(abs(diff(lon_1day_repeat_perturbed)) > 180);
+starts_1day_repeat_perturbed = [1; wrap_indices_1day_repeat_perturbed + 1];
+ends_1day_repeat_perturbed = [wrap_indices_1day_repeat_perturbed; length(lon_1day_repeat_perturbed)];
+
+
+figure('Name','Ground Track Nominal Orbit - 1 Orbit Period')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
 for i = 1:length(starts_1orbit)
     idx = starts_1orbit(i):ends_1orbit(i);
-    plot(lon_1orbit(idx), lat_1orbit(idx), 'r', 'LineWidth', 1);
+    if i == 1
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
 for i = 1:length(starts_1orbit_perturbed)
     idx = starts_1orbit_perturbed(i):ends_1orbit_perturbed(i);
-    plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1);
+    if i == 1
+        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+    else
+        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
+plot(lon_1orbit(1), lat_1orbit(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_1orbit(end), lat_1orbit(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+plot(lon_1orbit_perturbed(1), lat_1orbit_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Perturbed Start');
+plot(lon_1orbit_perturbed(end), lat_1orbit_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Perturbed End');
+
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track - Nominal Orbit (1 Orbit Period)')
 xlim([-180 180])
 ylim([-90 90])
+legend('Location','best')
 grid on
 hold off
 
@@ -393,31 +445,34 @@ figure('Name','Ground Track Nominal Orbit - 1 Day')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
 hold on
-% Find indices for 1 day (86400 seconds)
-idx_1day = TNominal <= 86400;
-lon_1day = lon_nominal(idx_1day);
-lon_1day_perturbed = lon_perturbed(idx_1day);
-lat_1day = lat_nominal(idx_1day);
-lat_1day_perturbed = lat_perturbed(idx_1day);
-wrap_indices_1day = find(abs(diff(lon_1day)) > 180);
-wrap_indices_1day_perturbed = find(abs(diff(lon_1day_perturbed)) > 180);
-starts_1day = [1; wrap_indices_1day + 1];
-starts_1day_perturbed = [1; wrap_indices_1day_perturbed + 1];
-ends_1day = [wrap_indices_1day; length(lon_1day)];
-ends_1day_perturbed = [wrap_indices_1day_perturbed; length(lon_1day_perturbed)];
 for i = 1:length(starts_1day)
     idx = starts_1day(i):ends_1day(i);
-    plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1);
+    if i == 1
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
 for i = 1:length(starts_1day_perturbed)
     idx = starts_1day_perturbed(i):ends_1day_perturbed(i);
-    plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1);
+    if i == 1
+        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+    else
+        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
+plot(lon_1day(1), lat_1day(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_1day(end), lat_1day(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+plot(lon_1day_perturbed(1), lat_1day_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Perturbed Start');
+plot(lon_1day_perturbed(end), lat_1day_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Perturbed End');
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track - Nominal Orbit (1 Day)')
 xlim([-180 180])
 ylim([-90 90])
+legend('Location','best')
 grid on
 hold off
 
@@ -428,19 +483,145 @@ set(gca, 'YDir', 'normal');
 hold on
 for i = 1:length(starts_nominal)
     idx = starts_nominal(i):ends_nominal(i);
-    plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1);
+    if i == 1
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
 for i = 1:length(starts_perturbed)
     idx = starts_perturbed(i):ends_perturbed(i);
-    plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1);
+    if i == 1
+        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+    else
+        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
 end
+
+plot(lon_nominal(1), lat_nominal(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_nominal(end), lat_nominal(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+plot(lon_perturbed(1), lat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Perturbed Start');
+plot(lon_perturbed(end), lat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Perturbed End');
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
 title('Satellite Ground Track - Nominal Orbit (12 Days)')
 xlim([-180 180])
 ylim([-90 90])
+legend('Location','best')
 grid on
 hold off
+
+figure('Name','Ground Track Repeating Orbit - 1 Orbit Period')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_1orbit_repeat)
+    idx = starts_1orbit_repeat(i):ends_1orbit_repeat(i);
+    if i == 1
+        plot(lon_1orbit_repeat(idx), lat_1orbit_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
+    else
+        plot(lon_1orbit_repeat(idx), lat_1orbit_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+for i = 1:length(starts_1orbit_repeat_perturbed)
+    idx = starts_1orbit_repeat_perturbed(i):ends_1orbit_repeat_perturbed(i);
+    if i == 1
+        plot(lon_1orbit_repeat_perturbed(idx), lat_1orbit_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
+    else
+        plot(lon_1orbit_repeat_perturbed(idx), lat_1orbit_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_1orbit_repeat(1), lat_1orbit_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
+plot(lon_1orbit_repeat(end), lat_1orbit_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
+plot(lon_1orbit_repeat_perturbed(1), lat_1orbit_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
+plot(lon_1orbit_repeat_perturbed(end), lat_1orbit_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Repeating Orbit (1 Orbit Period)')
+xlim([-180 180])
+ylim([-90 90])
+legend('Location','best')
+grid on
+hold off
+
+figure('Name','Ground Track Repeating Orbit - 1 Day')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_1day_repeat)
+    idx = starts_1day_repeat(i):ends_1day_repeat(i);
+    if i == 1
+        plot(lon_1day_repeat(idx), lat_1day_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
+    else
+        plot(lon_1day_repeat(idx), lat_1day_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+for i = 1:length(starts_1day_repeat_perturbed)
+    idx = starts_1day_repeat_perturbed(i):ends_1day_repeat_perturbed(i);
+    if i == 1
+        plot(lon_1day_repeat_perturbed(idx), lat_1day_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
+    else
+        plot(lon_1day_repeat_perturbed(idx), lat_1day_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_1day_repeat(1), lat_1day_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
+plot(lon_1day_repeat(end), lat_1day_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
+plot(lon_1day_repeat_perturbed(1), lat_1day_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
+plot(lon_1day_repeat_perturbed(end), lat_1day_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Repeating Orbit (1 Day)')
+xlim([-180 180])
+ylim([-90 90])
+legend('Location','best')
+grid on
+hold off
+
+figure('Name','Ground Track Repeating Orbit - 12 Days')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_repeat)
+    idx = starts_repeat(i):ends_repeat(i);
+    if i == 1
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
+    else
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+for i = 1:length(starts_repeat_perturbed)
+    idx = starts_repeat_perturbed(i):ends_repeat_perturbed(i);
+    if i == 1
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
+    else
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_repeat(1), lat_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
+plot(lon_repeat(end), lat_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
+plot(lon_repeat_perturbed(1), lat_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
+plot(lon_repeat_perturbed(end), lat_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+title('Satellite Ground Track - Repeating Orbit (12 Days)')
+xlim([-180 180])
+ylim([-90 90])
+legend('Location','best')
+grid on
+hold off
+
+fprintf('Plotting Repeating & Repeating Perturbed Ground Track with different periods.\n');
+fprintf('----------------------------------------\n');
 
 fprintf('Plotting Nominal & Perturbed Ground Track with different periods.\n');
 fprintf('----------------------------------------\n');

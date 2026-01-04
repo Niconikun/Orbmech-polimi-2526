@@ -14,6 +14,8 @@ function required_a = RepeatingGroundTrack(m,k,omega,mu)
     % Outputs:
     %   required_a - the calculated semi-major axis required for the 
     %   repeating ground track (meters)
-    T = (2*pi/omega)*m/k;
-    required_a = (mu * T^2 / (4 * pi^2))^(1/3);
+    n = omega * (k/ m);
+    
+    %T = (2*pi/omega)*m/k;
+    required_a = (mu /n^2)^(1/3);
 end
