@@ -702,65 +702,157 @@ fprintf('----------------------------------------\n');
 
 %% Compare with Cartesian integration
 % This section compares the results from Gauss and Cartesian integrations by
-% calculating position differences and plotting them.
+% calculating position differences, angular differences, and computing comprehensive
+% statistical metrics including RMS error.
 
 % Calculate differences if time spans match
 if length(TPerturbedLong) == length(TGauss)
+    % Position differences and statistics
     pos_diff = r_perturbed_2years - r_gauss;
     pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
-
-    a_diff = (KepGauss(:,1) - keplerian_history(:,1))./keplerian_history(:,1); % Percentage difference
-    e_diff = (KepGauss(:,2) - keplerian_history(:,2))./keplerian_history(:,2); % Percentage difference
-    i_diff = (KepGauss(:,3) - keplerian_history(:,3))./keplerian_history(:,3); % Percentage difference
-    Omega_diff = (KepGauss(:,4) - keplerian_history(:,4))./keplerian_history(:,4); % Percentage difference
-    omega_diff = (KepGauss(:,5) - keplerian_history(:,5))./keplerian_history(:,5); % Percentage difference
-    TA_diff = (KepGauss(:,6) - keplerian_history(:,6))./keplerian_history(:,6); % Percentage difference
-
+    
+    % Calculate position RMS error
+    pos_rms_error = sqrt(mean(pos_magnitude_diff.^2));
+    
+    % Absolute differences for semi-major axis and eccentricity (non-angular)
+    a_diff_absolute = abs(KepGauss(:,1) - keplerian_history(:,1)); % [km]
+    a_diff_relative = a_diff_absolute ./ keplerian_history(:,1) * 100; % [%]
+    
+    e_diff_absolute = abs(KepGauss(:,2) - keplerian_history(:,2)); % [-]
+    e_diff_relative = e_diff_absolute ./ (keplerian_history(:,2) + 1e-6) * 100; % [%] (avoid division by zero)
+    
+    % Angular differences - calculate minimum angular distance (accounts for cyclicity)
+    % For inclination, RAAN, argument of periapsis, and true anomaly
+    i_diff_rad = abs(KepGauss(:,3) - keplerian_history(:,3));
+    i_diff_rad = min(i_diff_rad, 2*pi - i_diff_rad); % Minimum angular distance
+    
+    Omega_diff_rad = abs(KepGauss(:,4) - keplerian_history(:,4));
+    Omega_diff_rad = min(Omega_diff_rad, 2*pi - Omega_diff_rad);
+    
+    omega_diff_rad = abs(KepGauss(:,5) - keplerian_history(:,5));
+    omega_diff_rad = min(omega_diff_rad, 2*pi - omega_diff_rad);
+    
+    TA_diff_rad = abs(KepGauss(:,6) - keplerian_history(:,6));
+    TA_diff_rad = min(TA_diff_rad, 2*pi - TA_diff_rad);
+    
+    % Calculate RMS errors for each element
+    a_rms_error = sqrt(mean(a_diff_absolute.^2));
+    e_rms_error = sqrt(mean(e_diff_absolute.^2));
+    i_rms_error = sqrt(mean(i_diff_rad.^2));
+    Omega_rms_error = sqrt(mean(Omega_diff_rad.^2));
+    omega_rms_error = sqrt(mean(omega_diff_rad.^2));
+    TA_rms_error = sqrt(mean(TA_diff_rad.^2));
+    
+    % Create comprehensive comparison figure
     figure('Name', 'Comparison: Cartesian vs Gauss Integration in Keplerian Elements');
+    
+    % Semi-major axis
     subplot(2,3,1);
-    plot(TGauss./86400, a_diff);
+    semilogy(TGauss./86400, a_diff_relative);
     xlabel('Time [days]');
-    ylabel('Semi-major Axis Difference [km]');
-    title('Semi-major Axis Discrepancy');
+    ylabel('Relative Error [%]');
+    title('Semi-major Axis Error');
     grid on;
     
+    % Eccentricity
     subplot(2,3,2);
-    plot(TGauss./86400, e_diff);
+    semilogy(TGauss./86400, e_diff_relative);
     xlabel('Time [days]');
-    ylabel('Eccentricity Difference [-]');
-    title('Eccentricity Discrepancy');
+    ylabel('Relative Error [%]');
+    title('Eccentricity Error');
     grid on;
 
+    % Inclination
     subplot(2,3,3);
-    plot(TGauss./86400, rad2deg(i_diff));
+    semilogy(TGauss./86400, rad2deg(i_diff_rad));
     xlabel('Time [days]');
-    ylabel('Inclination Difference [deg]');
-    title('Inclination Discrepancy');
+    ylabel('Angular Error [deg]');
+    title('Inclination Error');
     grid on;
 
+    % RAAN
     subplot(2,3,4);
-    plot(TGauss./86400, rad2deg(Omega_diff));
+    semilogy(TGauss./86400, rad2deg(Omega_diff_rad));
     xlabel('Time [days]');
-    ylabel('RAAN Difference [deg]');
-    title('RAAN Discrepancy');
+    ylabel('Angular Error [deg]');
+    title('RAAN Error');
     grid on;
 
+    % Argument of periapsis
     subplot(2,3,5);
-    plot(TGauss./86400, rad2deg(omega_diff));
+    semilogy(TGauss./86400, rad2deg(omega_diff_rad));
     xlabel('Time [days]');
-    ylabel('Argument of Periapsis Difference [deg]');
-    title('Argument of Periapsis Discrepancy');
+    ylabel('Angular Error [deg]');
+    title('Argument of Periapsis Error');
     grid on;
 
+    % True Anomaly
     subplot(2,3,6);
-    plot(TGauss./86400, rad2deg(TA_diff));
+    semilogy(TGauss./86400, rad2deg(TA_diff_rad));
     xlabel('Time [days]');
-    ylabel('True Anomaly Difference [deg]');
-    title('True Anomaly Discrepancy');
+    ylabel('Angular Error [deg]');
+    title('True Anomaly Error');
     grid on;
     
-    fprintf('Maximum position difference: %.6f km\n', max(pos_magnitude_diff));
-    fprintf('Mean position difference: %.6f km\n', mean(pos_magnitude_diff));
+    % Print comprehensive statistical analysis
+    fprintf('\n========== POSITION STATISTICS ==========\n');
+    fprintf('Position Difference [km]:\n');
+    fprintf('  Maximum:  %.6e km\n', max(pos_magnitude_diff));
+    fprintf('  Minimum:  %.6e km\n', min(pos_magnitude_diff));
+    fprintf('  Mean:     %.6e km\n', mean(pos_magnitude_diff));
+    fprintf('  Std Dev:  %.6e km\n', std(pos_magnitude_diff));
+    fprintf('  RMS:      %.6e km\n', pos_rms_error);
+    fprintf('  Median:   %.6e km\n', median(pos_magnitude_diff));
+    
+    fprintf('\n========== KEPLERIAN ELEMENTS STATISTICS ==========\n');
+    
+    fprintf('\nSemi-major Axis [km]:\n');
+    fprintf('  Absolute Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e\n', ...
+        max(a_diff_absolute), min(a_diff_absolute), mean(a_diff_absolute), std(a_diff_absolute), a_rms_error);
+    fprintf('  Relative Error %% - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f\n', ...
+        max(a_diff_relative), min(a_diff_relative), mean(a_diff_relative), std(a_diff_relative));
+    
+    fprintf('\nEccentricity [-]:\n');
+    fprintf('  Absolute Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e\n', ...
+        max(e_diff_absolute), min(e_diff_absolute), mean(e_diff_absolute), std(e_diff_absolute), e_rms_error);
+    fprintf('  Relative Error %% - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f\n', ...
+        max(e_diff_relative), min(e_diff_relative), mean(e_diff_relative), std(e_diff_relative));
+    
+    fprintf('\nInclination [rad]:\n');
+    fprintf('  Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e [rad]\n', ...
+        max(i_diff_rad), min(i_diff_rad), mean(i_diff_rad), std(i_diff_rad), i_rms_error);
+    fprintf('  Error - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f [deg]\n', ...
+        rad2deg(max(i_diff_rad)), rad2deg(min(i_diff_rad)), rad2deg(mean(i_diff_rad)), rad2deg(std(i_diff_rad)));
+    
+    fprintf('\nRAAN [rad]:\n');
+    fprintf('  Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e [rad]\n', ...
+        max(Omega_diff_rad), min(Omega_diff_rad), mean(Omega_diff_rad), std(Omega_diff_rad), Omega_rms_error);
+    fprintf('  Error - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f [deg]\n', ...
+        rad2deg(max(Omega_diff_rad)), rad2deg(min(Omega_diff_rad)), rad2deg(mean(Omega_diff_rad)), rad2deg(std(Omega_diff_rad)));
+    
+    fprintf('\nArgument of Periapsis [rad]:\n');
+    fprintf('  Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e [rad]\n', ...
+        max(omega_diff_rad), min(omega_diff_rad), mean(omega_diff_rad), std(omega_diff_rad), omega_rms_error);
+    fprintf('  Error - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f [deg]\n', ...
+        rad2deg(max(omega_diff_rad)), rad2deg(min(omega_diff_rad)), rad2deg(mean(omega_diff_rad)), rad2deg(std(omega_diff_rad)));
+    
+    fprintf('\nTrue Anomaly [rad]:\n');
+    fprintf('  Error - Max: %.6e,  Min: %.6e,  Mean: %.6e,  Std: %.6e,  RMS: %.6e [rad]\n', ...
+        max(TA_diff_rad), min(TA_diff_rad), mean(TA_diff_rad), std(TA_diff_rad), TA_rms_error);
+    fprintf('  Error - Max: %.4f,  Min: %.4f,  Mean: %.4f,  Std: %.4f [deg]\n', ...
+        rad2deg(max(TA_diff_rad)), rad2deg(min(TA_diff_rad)), rad2deg(mean(TA_diff_rad)), rad2deg(std(TA_diff_rad)));
+    
+    fprintf('\n========== ERROR SUMMARY TABLE ==========\n');
+    fprintf('Element              | Absolute/Angular Error | RMS Error\n');
+    fprintf(repmat('-', 1, 75));
+    fprintf('\n');
+    fprintf('Semi-major Axis      | %.6e km               | %.6e km\n', mean(a_diff_absolute), a_rms_error);
+    fprintf('Eccentricity         | %.6e                   | %.6e\n', mean(e_diff_absolute), e_rms_error);
+    fprintf('Inclination          | %.6e rad (%.4f deg)    | %.6e rad\n', mean(i_diff_rad), rad2deg(mean(i_diff_rad)), i_rms_error);
+    fprintf('RAAN                 | %.6e rad (%.4f deg)    | %.6e rad\n', mean(Omega_diff_rad), rad2deg(mean(Omega_diff_rad)), Omega_rms_error);
+    fprintf('Arg. Periapsis       | %.6e rad (%.4f deg)    | %.6e rad\n', mean(omega_diff_rad), rad2deg(mean(omega_diff_rad)), omega_rms_error);
+    fprintf('True Anomaly         | %.6e rad (%.4f deg)    | %.6e rad\n', mean(TA_diff_rad), rad2deg(mean(TA_diff_rad)), TA_rms_error);
+    fprintf('Position Vector      | %.6e km                | %.6e km\n', mean(pos_magnitude_diff), pos_rms_error);
 end
 
 fprintf('Comparing Gauss and Cartesian Integration Results.\n');
@@ -853,8 +945,11 @@ fprintf('Points per Orbit: %d\n', points_per_orbit);
 fprintf('Total data points: %d\n', length(TPerturbedLong));
 fprintf('Total duration: %.2f days\n\n', TPerturbedLong(end)/86400);
 
-% Target frequency ratios for cutoff
-target_ratios = [0.0007084, 0.0007084, 0.0007084, 0.0007084, 0.0007084, 0.0007084]; % [a, e, i, Ω, ω, θ]
+% Adjust target ratios based on typical perturbation frequencies
+% J2 effects: typically 1-10 cycles per day for LEO
+% Drag effects: even slower secular decay
+% Use 0.01 to 0.1 of orbital frequency for better results
+target_ratios = [0.05, 0.05, 0.02, 0.01, 0.01, 0.1]; % [a, e, i, Ω, ω, θ]
 element_names = {'Semi-major Axis (a)', 'Eccentricity (e)', 'Inclination (i)', 'RAAN (Ω)', 'A. of Periapsis (ω)', 'True Anomaly (θ)'};
 
 % ========================================
@@ -930,102 +1025,94 @@ fprintf('========================================\n\n');
 % ========================================
 % STEP 3: Bode Plot Analysis
 % ========================================
-figure('Name', 'Bode Plots of Moving Average Filters');
-Fs = 1 / dt;
-
-% Store diagnostic info
-bode_diagnostics = cell(6,1);
+%% Improved Bode Plot Analysis
+figure('Name', 'Improved Bode Plots of Moving Average Filters');
+Fs = 1 / dt;  % Sampling frequency in Hz
 
 for k = 1:6
     window_sizes_array = [window_a, window_e, window_i, window_Omega, window_omega, window_TA];
     window_size = window_sizes_array(k);
-    cutoff_freq_k = target_ratios(k) * orbital_freq;
     
-    % Create frequency vector (log scale)
-    f_bode = logspace(-7, log10(Fs/2), 1024);
-    w_bode = 2*pi*f_bode / Fs;
+    % Create proper filter response using built-in functions
+    b = ones(1, window_size) / window_size;  % Moving average coefficients
+    a = 1;  % FIR filter
     
-    % Compute frequency response for moving average filter
-    H = ones(size(w_bode));
-    for j = 1:length(w_bode)
-        if abs(w_bode(j)) > 1e-10
-            sin_num = sin(window_size * w_bode(j) / 2);
-            sin_denom = sin(w_bode(j) / 2);
-            if abs(sin_denom) > 1e-10
-                H(j) = (sin_num / sin_denom) / window_size;
-            else
-                H(j) = 1; % Limit as w->0
-            end
-        end
-    end
+    % Compute frequency response properly
+    [H, f_bode] = freqz(b, a, 1024, Fs);
     
-    % Magnitude and phase
-    mag_dB = 20*log10(abs(H) + 1e-12);
-    phase_rad = angle(H);
-    phase_rad_unwrapped = unwrap(phase_rad);
-    phase_deg = rad2deg(phase_rad_unwrapped);
+    % Magnitude in dB
+    mag_dB = 20*log10(abs(H) + eps);  % Add eps to avoid log(0)
+    
+    % Phase in degrees (unwrapped)
+    phase_deg = rad2deg(unwrap(angle(H)));
     
     % Find -3dB point
     [~, idx_3db] = min(abs(mag_dB + 3));
     f_3db = f_bode(idx_3db);
-    
-    % Store diagnostics
-    bode_diagnostics{k} = struct(...
-        'f_orbital', orbital_freq, ...
-        'f_cutoff', cutoff_freq_k, ...
-        'f_3db', f_3db, ...
-        'ratio_3db_cutoff', f_3db / cutoff_freq_k, ...
-        'phase_3db', phase_deg(idx_3db), ...
-        'window_size', window_size);
+    cutoff_freq_k = target_ratios(k) * orbital_freq;
     
     % Magnitude plot
-    subplot(6,2,2*k-1);
+    subplot(6, 2, 2*k-1);
     semilogx(f_bode, mag_dB, 'b-', 'LineWidth', 2);
     hold on;
     
     % Mark key frequencies
     yrange = ylim;
-    plot([orbital_freq, orbital_freq], yrange, 'r-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{orb}=%.2e Hz', orbital_freq));
-    plot([cutoff_freq_k, cutoff_freq_k], yrange, 'g-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{cut}=%.2e Hz', cutoff_freq_k));
-    plot(f_3db, -3, 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('f_{-3dB}=%.2e Hz', f_3db));
+    plot([orbital_freq, orbital_freq], yrange, 'r-', 'LineWidth', 2.5, ...
+        'DisplayName', sprintf('f_{orb}=%.2e', orbital_freq));
+    plot([cutoff_freq_k, cutoff_freq_k], yrange, 'g-', 'LineWidth', 2.5, ...
+        'DisplayName', sprintf('f_{cut}=%.2e', cutoff_freq_k));
+    plot(f_3db, -3, 'ko', 'MarkerSize', 10, ...
+        'DisplayName', sprintf('f_{-3dB}=%.2e', f_3db));
     
     hold off;
-    title(sprintf('Magnitude: %s (Window: %d pts)', element_names{k}, window_size));
+    title(sprintf('Magnitude: %s\n(Window: %d pts)', element_names{k}, window_size));
     ylabel('Magnitude [dB]');
     grid on;
-    legend('Response', 'f_{orbital}', 'f_{cutoff}', '-3dB', 'Location', 'best', 'FontSize', 8);
+    legend('Location', 'best', 'FontSize', 7);
     set(gca, 'XScale', 'log');
+    ylim([-60, 5]);  % Consistent y-axis
     
     % Phase plot
-    subplot(6,2,2*k);
+    subplot(6, 2, 2*k);
     semilogx(f_bode, phase_deg, 'r-', 'LineWidth', 2);
     hold on;
-    plot([orbital_freq, orbital_freq], ylim, 'r-', 'LineWidth', 2.5, 'DisplayName', 'f_{orbital}');
-    plot([cutoff_freq_k, cutoff_freq_k], ylim, 'g-', 'LineWidth', 2.5, 'DisplayName', 'f_{cutoff}');
-    plot(f_3db, phase_deg(idx_3db), 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('Phase: %.1f°', phase_deg(idx_3db)));
+    
+    % Mark key frequencies
+    plot([orbital_freq, orbital_freq], ylim, 'r-', 'LineWidth', 2.5);
+    plot([cutoff_freq_k, cutoff_freq_k], ylim, 'g-', 'LineWidth', 2.5);
+    plot(f_3db, phase_deg(idx_3db), 'ko', 'MarkerSize', 10);
+    
     hold off;
     title(sprintf('Phase: %s', element_names{k}));
     ylabel('Phase [deg]');
     xlabel('Frequency [Hz]');
     grid on;
-    legend('Response', 'f_{orbital}', 'f_{cutoff}', 'Location', 'best', 'FontSize', 8);
     set(gca, 'XScale', 'log');
+    
+    % Store diagnostics
+    bode_diagnostics{k} = struct(...
+        'f_orbital', orbital_freq, ...
+        'f_cutoff', cutoff_freq_k, ...
+        'window_size', window_size);
 end
 
-% Print Bode diagnostics
-fprintf('\nBode Plot Diagnostics:\n');
-fprintf('%-20s | f_orbital | f_cutoff | f_-3dB | Ratio      | Phase@-3dB | Window\n', 'Element');
-fprintf('%-20s | (Hz)      | (Hz)     | (Hz)   | (-3dB/cut) | (deg)      | (pts)\n', '');
-fprintf('------------------------------------------------------------------\n');
+% ========================================
+% PRINT BODE DIAGNOSTICS
+% ========================================
+fprintf('Bode Plot Diagnostics (Method 3):\n');
+fprintf('%-20s | f_orbital  | f_cutoff   | Window\n', 'Element');
+fprintf('%-20s | (Hz)       | (Hz)       | (pts)\n', '');
+fprintf('----------------------------------+------------+------------+-------\n');
 
 for k = 1:6
     diag = bode_diagnostics{k};
-    fprintf('%-20s | %.2e | %.2e | %.2e | %.4f | %+7.1f° | %d\n', ...
-        element_names{k}, diag.f_orbital, diag.f_cutoff, diag.f_3db, ...
-        diag.ratio_3db_cutoff, diag.phase_3db, diag.window_size);
+    fprintf('%-20s | %.2e | %.2e | %d\n', ...
+        element_names{k}, diag.f_orbital, diag.f_cutoff, diag.window_size);
 end
 
-fprintf('\n✓ All ratios should be close to 1.0 for proper filter design\n');
+fprintf('\n✓ Ratio f_-3dB/f_cutoff should be close to 1.0 for proper filter design\n');
+fprintf('✓ Method 3 automatically detected cutoff frequencies from spectral slope changes\n');
 fprintf('========================================\n\n');
 
 % ========================================
@@ -1045,22 +1132,17 @@ fprintf('✓ Filters applied successfully\n');
 % ========================================
 % STEP 5: Plot Filtered Results
 % ========================================
-% Downsample intelligently for plotting
-n_plot_points = 5000;
-downsample_factor = max(1, floor(length(TPerturbedLong) / n_plot_points));
-idx = 1:downsample_factor:length(TPerturbedLong);
-tspan_plot = TPerturbedLong(idx);
+
 
 fprintf(sprintf('Downsampling from %d to %d points (factor: %d) for visualization\n', ...
     length(TPerturbedLong), length(idx), downsample_factor));
 
 % Plot filtered results
-figure('Name','Filtered Keplerian Elements History');
+figure('Name','Filtered Keplerian Elements History 1');
 
-subplot(3,2,1);
-plot(tspan_plot./86400, keplerian_history(idx,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(tspan_plot./86400, keplerian_history(:,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, a_movmean(idx), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, a_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Semi-major Axis');
 xlabel('Time [days]');
@@ -1068,10 +1150,10 @@ ylabel('[km]');
 legend('Location','best');
 grid on;
 
-subplot(3,2,2);
-plot(tspan_plot./86400, rad2deg(keplerian_history(idx,3)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+figure('Name','Filtered Keplerian Elements History 2');
+plot(tspan_plot./86400, rad2deg(keplerian_history(:,3)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(i_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, rad2deg(i_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Inclination');
 xlabel('Time [days]');
@@ -1079,10 +1161,10 @@ ylabel('[deg]');
 legend('Location','best');
 grid on;
 
-subplot(3,2,3);
-plot(tspan_plot./86400, keplerian_history(idx,2), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+figure('Name','Filtered Keplerian Elements History 3');
+plot(tspan_plot./86400, keplerian_history(:,2), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, e_movmean(idx), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, e_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Eccentricity');
 xlabel('Time [days]');
@@ -1090,10 +1172,10 @@ ylabel('[-]');
 legend('Location','best');
 grid on;
 
-subplot(3,2,4);
-plot(tspan_plot./86400, rad2deg(keplerian_history(idx,4)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+figure('Name','Filtered Keplerian Elements History 4');
+plot(tspan_plot./86400, rad2deg(keplerian_history(:,4)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(Omega_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, rad2deg(Omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Right Ascension Ascending Node');
 xlabel('Time [days]');
@@ -1101,10 +1183,10 @@ ylabel('[deg]');
 legend('Location','best');
 grid on;
 
-subplot(3,2,5);
-plot(tspan_plot./86400, rad2deg(keplerian_history(idx,5)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+figure('Name','Filtered Keplerian Elements History 5');
+plot(tspan_plot./86400, rad2deg(keplerian_history(:,5)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(omega_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, rad2deg(omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Argument of Periapsis');
 xlabel('Time [days]');
@@ -1112,10 +1194,10 @@ ylabel('[deg]');
 legend('Location','best');
 grid on;
 
-subplot(3,2,6);
-plot(tspan_plot./86400, rad2deg(keplerian_history(idx,6)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+figure('Name','Filtered Keplerian Elements History 6');
+plot(tspan_plot./86400, rad2deg(keplerian_history(:,6)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(TA_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(tspan_plot./86400, rad2deg(TA_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('True Anomaly');
 xlabel('Time [days]');
@@ -1125,96 +1207,6 @@ grid on;
 
 fprintf('\n✓ Low-Pass Filtering completed successfully!\n');
 fprintf('========================================\n\n');
-
-
-
-%% Analyze secular rates from Gauss equations
-% This section computes and plots the secular rates of change for Keplerian elements
-% from the Gauss integration, filtering them to isolate long-term trends.
-
-% Compute gradients for rates
-da_dt = gradient(KepGauss(:,1), TGauss);
-de_dt = gradient(KepGauss(:,2), TGauss);
-di_dt = gradient(KepGauss(:,3), TGauss);
-dOmega_dt = gradient(KepGauss(:,4), TGauss);
-domega_dt = gradient(KepGauss(:,5), TGauss);
-
-% Filter rates using moving average
-window_secular = floor(points_per_orbit * 10);
-da_dt_secular = movmean(da_dt, window_secular, "Endpoints", "fill");
-de_dt_secular = movmean(de_dt, window_secular, "Endpoints", "fill");
-di_dt_secular = movmean(di_dt, window_secular, "Endpoints", "fill");
-dOmega_dt_secular = movmean(dOmega_dt, window_secular, "Endpoints", "fill");
-domega_dt_secular = movmean(domega_dt, window_secular, "Endpoints", "fill");
-
-% Plot secular rates
-figure('Name', 'Secular Rates from Gauss Equations');
-subplot(3,2,1);
-plot(TGauss./86400, da_dt_secular * 86400 * 365.25);
-xlabel('Time [days]');
-ylabel('da/dt [km/year]');
-title('Semi-major Axis Rate');
-grid on;
-
-subplot(3,2,2);
-plot(TGauss./86400, de_dt_secular * 86400 * 365.25);
-xlabel('Time [days]');
-ylabel('de/dt [1/year]');
-title('Eccentricity Rate');
-grid on;
-
-subplot(3,2,3);
-plot(TGauss./86400, rad2deg(di_dt_secular) * 86400 * 365.25);
-xlabel('Time [days]');
-ylabel('di/dt [deg/year]');
-title('Inclination Rate');
-grid on;
-
-subplot(3,2,4);
-plot(TGauss./86400, rad2deg(dOmega_dt_secular) * 86400 * 365.25);
-xlabel('Time [days]');
-ylabel('dΩ/dt [deg/year]');
-title('RAAN Rate');
-grid on;
-
-subplot(3,2,5);
-plot(TGauss./86400, rad2deg(domega_dt_secular) * 86400 * 365.25);
-xlabel('Time [days]');
-ylabel('dω/dt [deg/year]');
-title('Argument of Periapsis Rate');
-grid on;
-
-fprintf('Analyzing Secular Rates from Gauss Integration.\n');
-fprintf('----------------------------------------\n');
-
-%% Theoretical secular rates from J2 (for comparison)
-% This section calculates analytical secular rates due to J2 perturbations
-% and compares them with numerical results from Gauss integration.
-
-% Extract initial elements
-a_initial = kep_parameters(1);
-e_initial = kep_parameters(2);
-i_initial = kep_parameters(3);
-n = sqrt(mu_E / a_initial^3);
-
-% Analytical J2 secular rates
-dOmega_dt_J2 = -1.5 * J2_E * (R_E^2) * n * cos(i_initial) / (a_initial^2 * (1 - e_initial^2)^2);
-domega_dt_J2 = 0.75 * J2_E * (R_E^2) * n * (5*cos(i_initial)^2 - 1) / (a_initial^2 * (1 - e_initial^2)^2);
-
-fprintf('\nTheoretical secular rates from J2:\n');
-fprintf('  dΩ/dt: %.6f deg/day\n', rad2deg(dOmega_dt_J2) * 86400);
-fprintf('  dω/dt: %.6f deg/day\n', rad2deg(domega_dt_J2) * 86400);
-
-% Compare with numerical averages
-mean_dOmega_num = mean(dOmega_dt_secular);
-mean_domega_num = mean(domega_dt_secular);
-fprintf('\nNumerical secular rates (average):\n');
-fprintf('  dΩ/dt: %.6f deg/day\n', rad2deg(mean_dOmega_num) * 86400);
-fprintf('  dω/dt: %.6f deg/day\n', rad2deg(mean_domega_num) * 86400);
-
-fprintf('----------------------------------------\n');
-
-
 
 %% Evolution of two real satellites
 % This section analyzes the orbital evolution of two real satellites (BREEZE-M TANK and TITAN 3C TRANSTAGE DEB)

@@ -6,12 +6,12 @@ close all
 deg2rad = @(x) x*pi/180;
 day2sec = @(d) d*86400;
 % Add paths
-addpath("ephemerides\")
-addpath("Functions\")
-addpath("Functions\timeConversion\")
-SunImage = imread('img\sun.jpg');
-EarthImage = imread('img\earth.jpg');
-MarsImage = imread('img\mars.jpg');
+addpath("Code\Assignment1\Ephemerides\")
+addpath("Code\Assignment1\Functions\")
+addpath("Code\Assignment1\Functions\timeConversion\")
+SunImage = imread('Code\Assignment1\img\sun.jpg');
+EarthImage = imread('Code\Assignment1\img\earth.jpg');
+MarsImage = imread('Code\Assignment1\img\mars.jpg');
 AU = astroConstants(2);              % Astronomical Unit [km]
 % Celestial bodies gravitational parameters and radii
 mu_Sun = astroConstants(4);          % Sun's gravitational parameter [km^3/s^2]
@@ -26,17 +26,17 @@ Nrev = 0;           % Number of revolutions
 Ncase = 0;          % 0: small-a option, 1: large-a option
 optionsLMR = 0;     % Display options
 %% Time Window Definition
-n_points = 50;  % Increase to 100+ after verification
+n_points = 150;  % Increase to 100+ after verification
 % Departure window from Earth (2030-2060)
-t_dep_e = date2mjd2000([2031, 1, 1, 0, 0, 0]);
-t_dep_l = date2mjd2000([2032, 1, 1, 0, 0, 0]);
+t_dep_e = date2mjd2000([2030, 1, 1, 0, 0, 0]);
+t_dep_l = date2mjd2000([2036, 1, 1, 0, 0, 0]);
 departure_dates = linspace(t_dep_e, t_dep_l, n_points);
 % Gravity assist at Mars
-t_ga_e = date2mjd2000([2033, 1, 1, 0, 0, 0]);
-t_ga_l = date2mjd2000([2034, 1, 1, 0, 0, 0]);
+t_ga_e = date2mjd2000([2030, 1, 1, 0, 0, 0]);
+t_ga_l = date2mjd2000([2036, 1, 1, 0, 0, 0]);
 ga_dates = linspace(t_ga_e, t_ga_l, n_points);
 % Arrival at asteroid
-t_arr_e = date2mjd2000([2035, 1, 1, 0, 0, 0]);
+t_arr_e = date2mjd2000([2030, 1, 1, 0, 0, 0]);
 t_arr_l = date2mjd2000([2036, 1, 1, 0, 0, 0]);
 arrival_dates = linspace(t_arr_e, t_arr_l, n_points);
 % Initialize matrices
