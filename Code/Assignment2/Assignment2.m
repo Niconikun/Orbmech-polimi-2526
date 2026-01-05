@@ -660,7 +660,6 @@ for i=1:length(keplerian_history(:,1))
 end
 
 % Unwrap true anomaly for smooth plotting
-keplerian_history(:,3) = unwrap(keplerian_history(:,3));
 keplerian_history(:,4) = unwrap(keplerian_history(:,4));
 keplerian_history(:,5) = unwrap(keplerian_history(:,5));
 keplerian_history(:,6) = unwrap(keplerian_history(:,6));
@@ -837,24 +836,40 @@ fprintf('----------------------------------------\n');
 % history, using window sizes determined via Fast Fourier Transform (FFT) analysis.
 % Plots FFT spectra, Bode responses, and filtered results.
 
+% Verify data consistency
+assert(length(TPerturbedLong) == length(keplerian_history), 'Data length mismatch between TPerturbedLong and keplerian_history');
+
 % Calculate orbital period and points per orbit
 T_orbital = 2*pi*sqrt(kep_parameters(1)^3/mu_E);
 dt = 60; % Sampling interval in seconds
 points_per_orbit = floor(T_orbital / dt);
 orbital_freq = 1 / T_orbital; % Orbital frequency in Hz
 
-% Target frequency ratios for cutoff
-target_ratios = [0.0007, 0.0007, 0.0008, 0.002, 0.005, 0.005]; % [a, e, i, Ω, ω, θ]
-element_names = {'Semi-major Axis (a)', 'Eccentricity (e)', 'Inclination (i)', 'RAAN (Ω)', 'Argument of Perigee (ω)', 'True Anomaly (θ)'};
+fprintf('\n=== Low-Pass Filtering Configuration ===\n');
+fprintf('Orbital Period: %.2f seconds (%.4f hours)\n', T_orbital, T_orbital/3600);
+fprintf('Orbital Frequency: %.6e Hz\n', orbital_freq);
+fprintf('Sampling Interval: %d seconds\n', dt);
+fprintf('Points per Orbit: %d\n', points_per_orbit);
+fprintf('Total data points: %d\n', length(TPerturbedLong));
+fprintf('Total duration: %.2f days\n\n', TPerturbedLong(end)/86400);
 
-% Compute window sizes using FFT analysis
+% Target frequency ratios for cutoff
+target_ratios = [0.0007084, 0.0007084, 0.0007084, 0.0007084, 0.0007084, 0.0007084]; % [a, e, i, Ω, ω, θ]
+element_names = {'Semi-major Axis (a)', 'Eccentricity (e)', 'Inclination (i)', 'RAAN (Ω)', 'A. of Periapsis (ω)', 'True Anomaly (θ)'};
+
+% ========================================
+% STEP 1: FFT Analysis and Window Sizing
+% ========================================
 window_sizes = zeros(1,6);
 figure('Name', 'FFT Spectra of Keplerian Elements');
+
 for k = 1:6
     signal = keplerian_history(:,k);
     N = length(signal);
     Fs = 1 / dt; % Sampling frequency in Hz
-    f = Fs * (0:(N/2))/N; % Frequency vector
+    
+    % Frequency vector up to Nyquist
+    f = Fs * (0:(N/2))/N;
     
     % Compute FFT
     Y = fft(signal);
@@ -864,95 +879,114 @@ for k = 1:6
     
     % Calculate cutoff frequency
     cutoff_freq = target_ratios(k) * orbital_freq;
+    
+    % Calculate window size from cutoff frequency
     window_sizes(k) = max(ceil(1 / (cutoff_freq * dt)), 1);
     
-    % Plot FFT spectrum (log scale)
+    % Plot FFT spectrum with log scale
     subplot(3,2,k);
     semilogy(f, P1, 'b-', 'LineWidth', 1.5);
     hold on;
     
-    % Mark frequencies
+    % Mark key frequencies
     yrange = ylim;
-    plot([orbital_freq, orbital_freq], yrange, 'r--', 'LineWidth', 2, 'DisplayName', sprintf('f_{orbital} = %.2e Hz', orbital_freq));
-    plot([cutoff_freq, cutoff_freq], yrange, 'g--', 'LineWidth', 2, 'DisplayName', sprintf('f_{cutoff} = %.2e Hz', cutoff_freq));
+    plot([orbital_freq, orbital_freq], yrange, 'r--', 'LineWidth', 2, 'DisplayName', sprintf('f_{orb} = %.2e Hz', orbital_freq));
+    plot([cutoff_freq, cutoff_freq], yrange, 'g--', 'LineWidth', 2, 'DisplayName', sprintf('f_{cut} = %.2e Hz', cutoff_freq));
     
     hold off;
     set(gca, 'XScale', 'log');
-    title(sprintf('%s (Window: %d points)', element_names{k}, window_sizes(k)));
+    title(sprintf('%s (Initial window: %d points)', element_names{k}, window_sizes(k)));
     xlabel('Frequency [Hz] (log scale)');
     ylabel('Magnitude (log scale)');
     legend('Spectrum', 'Orbital Freq', 'Cutoff Freq', 'Location', 'best');
     grid on;
 end
 
-% Adjust window sizes with minimums
+% ========================================
+% STEP 2: Apply Minimum Window Constraints
+% ========================================
+% Adjust window sizes with physically meaningful minimums
 window_a = max(window_sizes(1), 1000);
 window_e = max(window_sizes(2), 2000);
 window_i = max(window_sizes(3), 5000);
 window_Omega = max(window_sizes(4), 5000);
 window_omega = max(window_sizes(5), 5000);
-window_TA = max(window_sizes(6), 500); % Ajustado a 500
+window_TA = max(window_sizes(6), 500);
 
-% Print window information
-fprintf('\n=== Low-Pass Filtering Configuration ===\n');
-fprintf('Orbital Period: %.2f seconds (%.4f hours)\n', T_orbital, T_orbital/3600);
-fprintf('Orbital Frequency: %.6e Hz\n', orbital_freq);
-fprintf('Sampling Interval: %d seconds\n', dt);
-fprintf('Points per Orbit: %d\n\n', points_per_orbit);
+% Validate windows don't exceed data length
+max_window = max([window_a, window_e, window_i, window_Omega, window_omega, window_TA]);
+assert(max_window < length(keplerian_history), sprintf('Window size %d exceeds data length %d', max_window, length(keplerian_history)));
 
-fprintf('Window Sizes:\n');
-fprintf('  a (Semi-major axis):    %d points (%.2f hours, ratio: %.2f)\n', window_a, window_a*dt/3600, target_ratios(1));
-fprintf('  e (Eccentricity):       %d points (%.2f hours, ratio: %.2f)\n', window_e, window_e*dt/3600, target_ratios(2));
-fprintf('  i (Inclination):        %d points (%.2f hours, ratio: %.2f)\n', window_i, window_i*dt/3600, target_ratios(3));
-fprintf('  Ω (RAAN):               %d points (%.2f hours, ratio: %.2f)\n', window_Omega, window_Omega*dt/3600, target_ratios(4));
-fprintf('  ω (Arg. Periapsis):     %d points (%.2f hours, ratio: %.2f)\n', window_omega, window_omega*dt/3600, target_ratios(5));
-fprintf('  θ (True Anomaly):       %d points (%.2f hours, ratio: %.2f)\n', window_TA, window_TA*dt/3600, target_ratios(6));
+% Print detailed window information
+fprintf('Window Sizes (after minimum constraints):\n');
+fprintf('  a (Semi-major axis):    %d points (%.2f hours, ratio: %.4f)\n', window_a, window_a*dt/3600, target_ratios(1));
+fprintf('  e (Eccentricity):       %d points (%.2f hours, ratio: %.4f)\n', window_e, window_e*dt/3600, target_ratios(2));
+fprintf('  i (Inclination):        %d points (%.2f hours, ratio: %.4f)\n', window_i, window_i*dt/3600, target_ratios(3));
+fprintf('  Ω (RAAN):               %d points (%.2f hours, ratio: %.4f)\n', window_Omega, window_Omega*dt/3600, target_ratios(4));
+fprintf('  ω (Arg. Periapsis):     %d points (%.2f hours, ratio: %.4f)\n', window_omega, window_omega*dt/3600, target_ratios(5));
+fprintf('  θ (True Anomaly):       %d points (%.2f hours, ratio: %.4f)\n', window_TA, window_TA*dt/3600, target_ratios(6));
 fprintf('========================================\n\n');
 
-% Bode plot for moving average filters
+% ========================================
+% STEP 3: Bode Plot Analysis
+% ========================================
 figure('Name', 'Bode Plots of Moving Average Filters');
 Fs = 1 / dt;
+
+% Store diagnostic info
+bode_diagnostics = cell(6,1);
 
 for k = 1:6
     window_sizes_array = [window_a, window_e, window_i, window_Omega, window_omega, window_TA];
     window_size = window_sizes_array(k);
     cutoff_freq_k = target_ratios(k) * orbital_freq;
     
-    % Frequency vector from DC to Nyquist (log scale)
+    % Create frequency vector (log scale)
     f_bode = logspace(-7, log10(Fs/2), 1024);
     w_bode = 2*pi*f_bode / Fs;
     
     % Compute frequency response for moving average filter
-    H = zeros(size(w_bode));
+    H = ones(size(w_bode));
     for j = 1:length(w_bode)
-        if abs(w_bode(j)) < 1e-10
-            H(j) = 1;
-        else
-            H(j) = (sin(window_size * w_bode(j) / 2) / sin(w_bode(j) / 2)) / window_size;
+        if abs(w_bode(j)) > 1e-10
+            sin_num = sin(window_size * w_bode(j) / 2);
+            sin_denom = sin(w_bode(j) / 2);
+            if abs(sin_denom) > 1e-10
+                H(j) = (sin_num / sin_denom) / window_size;
+            else
+                H(j) = 1; % Limit as w->0
+            end
         end
     end
     
-    % Magnitude in dB
+    % Magnitude and phase
     mag_dB = 20*log10(abs(H) + 1e-12);
-    
-    % Phase in degrees (with unwrap to remove discontinuities)
     phase_rad = angle(H);
     phase_rad_unwrapped = unwrap(phase_rad);
     phase_deg = rad2deg(phase_rad_unwrapped);
+    
+    % Find -3dB point
+    [~, idx_3db] = min(abs(mag_dB + 3));
+    f_3db = f_bode(idx_3db);
+    
+    % Store diagnostics
+    bode_diagnostics{k} = struct(...
+        'f_orbital', orbital_freq, ...
+        'f_cutoff', cutoff_freq_k, ...
+        'f_3db', f_3db, ...
+        'ratio_3db_cutoff', f_3db / cutoff_freq_k, ...
+        'phase_3db', phase_deg(idx_3db), ...
+        'window_size', window_size);
     
     % Magnitude plot
     subplot(6,2,2*k-1);
     semilogx(f_bode, mag_dB, 'b-', 'LineWidth', 2);
     hold on;
     
-    % Mark frequencies
+    % Mark key frequencies
     yrange = ylim;
     plot([orbital_freq, orbital_freq], yrange, 'r-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{orb}=%.2e Hz', orbital_freq));
     plot([cutoff_freq_k, cutoff_freq_k], yrange, 'g-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{cut}=%.2e Hz', cutoff_freq_k));
-    
-    % Mark -3dB point
-    [~, idx_3db] = min(abs(mag_dB + 3));
-    f_3db = f_bode(idx_3db);
     plot(f_3db, -3, 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('f_{-3dB}=%.2e Hz', f_3db));
     
     hold off;
@@ -962,13 +996,13 @@ for k = 1:6
     legend('Response', 'f_{orbital}', 'f_{cutoff}', '-3dB', 'Location', 'best', 'FontSize', 8);
     set(gca, 'XScale', 'log');
     
-    % Phase plot (with unwrapped phase for smooth visualization)
+    % Phase plot
     subplot(6,2,2*k);
     semilogx(f_bode, phase_deg, 'r-', 'LineWidth', 2);
     hold on;
     plot([orbital_freq, orbital_freq], ylim, 'r-', 'LineWidth', 2.5, 'DisplayName', 'f_{orbital}');
     plot([cutoff_freq_k, cutoff_freq_k], ylim, 'g-', 'LineWidth', 2.5, 'DisplayName', 'f_{cutoff}');
-    plot(f_3db, phase_deg(idx_3db), 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('Phase at -3dB: %.1f°', phase_deg(idx_3db)));
+    plot(f_3db, phase_deg(idx_3db), 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('Phase: %.1f°', phase_deg(idx_3db)));
     hold off;
     title(sprintf('Phase: %s', element_names{k}));
     ylabel('Phase [deg]');
@@ -976,20 +1010,29 @@ for k = 1:6
     grid on;
     legend('Response', 'f_{orbital}', 'f_{cutoff}', 'Location', 'best', 'FontSize', 8);
     set(gca, 'XScale', 'log');
-    
-    % Print diagnostic information
-    fprintf('Element %d (%s):\n', k, element_names{k});
-    fprintf('  f_orbital = %.6e Hz\n', orbital_freq);
-    fprintf('  f_cutoff = %.6e Hz\n', cutoff_freq_k);
-    fprintf('  f_-3dB = %.6e Hz\n', f_3db);
-    fprintf('  Ratio f_-3dB/f_cutoff = %.4f (ideal: ~1.0)\n', f_3db / cutoff_freq_k);
-    fprintf('  Phase at -3dB: %.2f°\n\n', phase_deg(idx_3db));
 end
 
-fprintf('Bode plots completed with corrected phase.\n');
-fprintf('----------------------------------------\n');
+% Print Bode diagnostics
+fprintf('\nBode Plot Diagnostics:\n');
+fprintf('%-20s | f_orbital | f_cutoff | f_-3dB | Ratio      | Phase@-3dB | Window\n', 'Element');
+fprintf('%-20s | (Hz)      | (Hz)     | (Hz)   | (-3dB/cut) | (deg)      | (pts)\n', '');
+fprintf('------------------------------------------------------------------\n');
 
-% Apply moving average filters
+for k = 1:6
+    diag = bode_diagnostics{k};
+    fprintf('%-20s | %.2e | %.2e | %.2e | %.4f | %+7.1f° | %d\n', ...
+        element_names{k}, diag.f_orbital, diag.f_cutoff, diag.f_3db, ...
+        diag.ratio_3db_cutoff, diag.phase_3db, diag.window_size);
+end
+
+fprintf('\n✓ All ratios should be close to 1.0 for proper filter design\n');
+fprintf('========================================\n\n');
+
+% ========================================
+% STEP 4: Apply Filters
+% ========================================
+fprintf('Applying moving average filters...\n');
+
 a_movmean = movmean(keplerian_history(:,1), window_a, "Endpoints", "fill");
 e_movmean = movmean(keplerian_history(:,2), window_e, "Endpoints", "fill");
 i_movmean = movmean(keplerian_history(:,3), window_i, "Endpoints", "fill");
@@ -997,18 +1040,23 @@ Omega_movmean = movmean(keplerian_history(:,4), window_Omega, "Endpoints", "fill
 omega_movmean = movmean(keplerian_history(:,5), window_omega, "Endpoints", "fill");
 TA_movmean = movmean(keplerian_history(:,6), window_TA, "Endpoints", "fill");
 
-% Downsample for plotting
-downsample_factor = floor(length(TPerturbedLong)/10000);
-if downsample_factor > 1
-    idx = 1:downsample_factor:length(TPerturbedLong);
-    tspan_plot = TPerturbedLong(idx);
-else
-    idx = 1:length(TPerturbedLong);
-    tspan_plot = TPerturbedLong;
-end
+fprintf('✓ Filters applied successfully\n');
+
+% ========================================
+% STEP 5: Plot Filtered Results
+% ========================================
+% Downsample intelligently for plotting
+n_plot_points = 5000;
+downsample_factor = max(1, floor(length(TPerturbedLong) / n_plot_points));
+idx = 1:downsample_factor:length(TPerturbedLong);
+tspan_plot = TPerturbedLong(idx);
+
+fprintf(sprintf('Downsampling from %d to %d points (factor: %d) for visualization\n', ...
+    length(TPerturbedLong), length(idx), downsample_factor));
 
 % Plot filtered results
 figure('Name','Filtered Keplerian Elements History');
+
 subplot(3,2,1);
 plot(tspan_plot./86400, keplerian_history(idx,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
@@ -1075,8 +1123,8 @@ ylabel('[deg]');
 legend('Location','best');
 grid on;
 
-fprintf('Low-Pass Filtering completed successfully.\n');
-fprintf('----------------------------------------\n');
+fprintf('\n✓ Low-Pass Filtering completed successfully!\n');
+fprintf('========================================\n\n');
 
 
 
