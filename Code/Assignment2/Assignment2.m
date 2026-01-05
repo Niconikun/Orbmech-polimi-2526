@@ -1134,15 +1134,12 @@ fprintf('✓ Filters applied successfully\n');
 % ========================================
 
 
-fprintf(sprintf('Downsampling from %d to %d points (factor: %d) for visualization\n', ...
-    length(TPerturbedLong), length(idx), downsample_factor));
-
 % Plot filtered results
 figure('Name','Filtered Keplerian Elements History 1');
 
-plot(tspan_plot./86400, keplerian_history(:,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, keplerian_history(:,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, a_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, a_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Semi-major Axis');
 xlabel('Time [days]');
@@ -1151,9 +1148,9 @@ legend('Location','best');
 grid on;
 
 figure('Name','Filtered Keplerian Elements History 2');
-plot(tspan_plot./86400, rad2deg(keplerian_history(:,3)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, rad2deg(keplerian_history(:,3)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(i_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, rad2deg(i_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Inclination');
 xlabel('Time [days]');
@@ -1162,9 +1159,9 @@ legend('Location','best');
 grid on;
 
 figure('Name','Filtered Keplerian Elements History 3');
-plot(tspan_plot./86400, keplerian_history(:,2), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, keplerian_history(:,2), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, e_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, e_movmean, 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Eccentricity');
 xlabel('Time [days]');
@@ -1173,9 +1170,9 @@ legend('Location','best');
 grid on;
 
 figure('Name','Filtered Keplerian Elements History 4');
-plot(tspan_plot./86400, rad2deg(keplerian_history(:,4)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, rad2deg(keplerian_history(:,4)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(Omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, rad2deg(Omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Right Ascension Ascending Node');
 xlabel('Time [days]');
@@ -1184,9 +1181,9 @@ legend('Location','best');
 grid on;
 
 figure('Name','Filtered Keplerian Elements History 5');
-plot(tspan_plot./86400, rad2deg(keplerian_history(:,5)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, rad2deg(keplerian_history(:,5)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, rad2deg(omega_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('Argument of Periapsis');
 xlabel('Time [days]');
@@ -1195,9 +1192,9 @@ legend('Location','best');
 grid on;
 
 figure('Name','Filtered Keplerian Elements History 6');
-plot(tspan_plot./86400, rad2deg(keplerian_history(:,6)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+plot(TPerturbedLong./86400, rad2deg(keplerian_history(:,6)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
 hold on;
-plot(tspan_plot./86400, rad2deg(TA_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+plot(TPerturbedLong./86400, rad2deg(TA_movmean), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
 hold off;
 title('True Anomaly');
 xlabel('Time [days]');
