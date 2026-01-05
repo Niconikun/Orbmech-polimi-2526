@@ -241,9 +241,9 @@ for i = 1:length(TRepeatPerturbed)
 end
 
 fprintf('Calculating Repeating Perturbed Ground Track assuming k = 1 and m = 12.\n');
-fprintf('Nominal Semi-Major Axis: %4f km\n', a_nominal);
-fprintf('Repeating Semi-Major Axis: %4f km\n', a_repeat);
-fprintf('Repeating Perturbed Semi-Major Axis: %4f km\n', a_repeat_perturbed);
+fprintf('Nominal Semi-Major Axis: %.4f km\n', a_nominal);
+fprintf('Repeating Semi-Major Axis: %.4f km\n', a_repeat);
+fprintf('Repeating Perturbed Semi-Major Axis: %.4f km\n', a_repeat_perturbed);
 fprintf('----------------------------------------\n');
 
 %% Perturbed Orbit (J2 + Drag)
@@ -707,16 +707,16 @@ fprintf('----------------------------------------\n');
 % calculating position differences and plotting them.
 
 % Calculate differences if time spans match
-if length(TPerturbed) == length(TGauss)
+if length(TPerturbedLong) == length(TGauss)
     pos_diff = r_perturbed_2years - r_gauss;
     pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
-    
-    a_diff = KepGauss(:,1) - keplerian_history(:,1);
-    e_diff = KepGauss(:,2) - keplerian_history(:,2);
-    i_diff = KepGauss(:,3) - keplerian_history(:,3);
-    Omega_diff = KepGauss(:,4) - keplerian_history(:,4);
-    omega_diff = KepGauss(:,5) - keplerian_history(:,5);
-    TA_diff = KepGauss(:,6) - keplerian_history(:,6);
+
+    a_diff = (KepGauss(:,1) - keplerian_history(:,1))/keplerian_history(:,1) * 100; % Percentage difference
+    e_diff = (KepGauss(:,2) - keplerian_history(:,2))/keplerian_history(:,2) * 100; % Percentage difference
+    i_diff = (KepGauss(:,3) - keplerian_history(:,3))/keplerian_history(:,3) * 100; % Percentage difference
+    Omega_diff = (KepGauss(:,4) - keplerian_history(:,4))/keplerian_history(:,4) * 100; % Percentage difference
+    omega_diff = (KepGauss(:,5) - keplerian_history(:,5))/keplerian_history(:,5) * 100; % Percentage difference
+    TA_diff = (KepGauss(:,6) - keplerian_history(:,6))/keplerian_history(:,6) * 100; % Percentage difference
 
     figure('Name', 'Comparison: Cartesian vs Gauss Integration in Keplerian Elements');
     subplot(2,3,1);
@@ -881,7 +881,7 @@ for k = 1:6
     
     % Plot frequency spectrum
     subplot(3,2,k);
-    plot(f, log10(P1), 'b-', 'LineWidth', 1.5);
+    plot(f./orbital_freq, P1, 'b-', 'LineWidth', 1.5);
     hold on;
     % Mark orbital frequency
     plot([orbital_freq, orbital_freq], ylim, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Orbital Freq');
@@ -889,8 +889,8 @@ for k = 1:6
     plot([cutoff_freq, cutoff_freq], ylim, 'g--', 'LineWidth', 1.5, 'DisplayName', 'Cutoff Freq');
     hold off;
     title(element_names{k});
-    xlabel('Frequency [Hz]');
-    ylabel('Magnitude (log10)');
+    xlabel('Adimensional Frequency [-]');
+    ylabel('Amplitude');
     legend('Spectrum', 'Orbital Freq', 'Cutoff Freq');
     grid on;
 end
