@@ -411,7 +411,6 @@ imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
 hold on
 for i = 1:length(starts_1orbit)
-    idx = starts_1orbit(i):ends_1orbit(i);
     if i == 1
         plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
     else
@@ -711,12 +710,12 @@ if length(TPerturbedLong) == length(TGauss)
     pos_diff = r_perturbed_2years - r_gauss;
     pos_magnitude_diff = sqrt(sum(pos_diff.^2, 2));
 
-    a_diff = (KepGauss(:,1) - keplerian_history(:,1))/keplerian_history(:,1) * 100; % Percentage difference
-    e_diff = (KepGauss(:,2) - keplerian_history(:,2))/keplerian_history(:,2) * 100; % Percentage difference
-    i_diff = (KepGauss(:,3) - keplerian_history(:,3))/keplerian_history(:,3) * 100; % Percentage difference
-    Omega_diff = (KepGauss(:,4) - keplerian_history(:,4))/keplerian_history(:,4) * 100; % Percentage difference
-    omega_diff = (KepGauss(:,5) - keplerian_history(:,5))/keplerian_history(:,5) * 100; % Percentage difference
-    TA_diff = (KepGauss(:,6) - keplerian_history(:,6))/keplerian_history(:,6) * 100; % Percentage difference
+    a_diff = (KepGauss(:,1) - keplerian_history(:,1))./keplerian_history(:,1); % Percentage difference
+    e_diff = (KepGauss(:,2) - keplerian_history(:,2))./keplerian_history(:,2); % Percentage difference
+    i_diff = (KepGauss(:,3) - keplerian_history(:,3))./keplerian_history(:,3); % Percentage difference
+    Omega_diff = (KepGauss(:,4) - keplerian_history(:,4))./keplerian_history(:,4); % Percentage difference
+    omega_diff = (KepGauss(:,5) - keplerian_history(:,5))./keplerian_history(:,5); % Percentage difference
+    TA_diff = (KepGauss(:,6) - keplerian_history(:,6))./keplerian_history(:,6); % Percentage difference
 
     figure('Name', 'Comparison: Cartesian vs Gauss Integration in Keplerian Elements');
     subplot(2,3,1);
@@ -835,89 +834,160 @@ fprintf('----------------------------------------\n');
 
 %% Low-Pass Filtering
 % This section applies moving average filtering to smooth the Keplerian elements
-% history, using window sizes determined via Fast Fourier Transform (FFT) analysis
-% to identify appropriate cutoff frequencies, and plots the filtered results alongside the original data.
-% Also plots the frequency domain (FFT spectrum) for each Keplerian element.
+% history, using window sizes determined via Fast Fourier Transform (FFT) analysis.
+% Plots FFT spectra, Bode responses, and filtered results.
 
 % Calculate orbital period and points per orbit
 T_orbital = 2*pi*sqrt(kep_parameters(1)^3/mu_E);
-dt = 60; % Sampling interval in seconds (from tspan_2years)
-points_per_orbit = floor(T_orbital / dt); % Number of points per orbit
+dt = 60; % Sampling interval in seconds
+points_per_orbit = floor(T_orbital / dt);
+orbital_freq = 1 / T_orbital; % Orbital frequency in Hz
 
-% Function to compute window size from FFT
-compute_window_fft = @(signal, dt, target_freq_ratio) ...
-    ceil(1 / (target_freq_ratio * (1 / (length(signal) * dt)))); % Approximate window for cutoff at target_freq_ratio of Nyquist
-
-% Target frequency ratios for cutoff (relative to orbital frequency)
-% Lower ratio for slower-changing elements (e.g., a, e), higher for faster (e.g., θ)
-target_ratios = [0.01, 0.05, 0.1, 0.1, 0.1, 0.5]; % [a, e, i, Ω, ω, θ]
-
-% Element names for plotting
+% Target frequency ratios for cutoff
+target_ratios = [0.0007, 0.0007, 0.0008, 0.002, 0.005, 0.005]; % [a, e, i, Ω, ω, θ]
 element_names = {'Semi-major Axis (a)', 'Eccentricity (e)', 'Inclination (i)', 'RAAN (Ω)', 'Argument of Perigee (ω)', 'True Anomaly (θ)'};
 
-% Compute window sizes using FFT analysis and plot frequency spectra
+% Compute window sizes using FFT analysis
 window_sizes = zeros(1,6);
-figure('Name', 'Frequency Spectra of Keplerian Elements');
+figure('Name', 'FFT Spectra of Keplerian Elements');
 for k = 1:6
     signal = keplerian_history(:,k);
     N = length(signal);
-    Fs = 1 / dt; % Sampling frequency
+    Fs = 1 / dt; % Sampling frequency in Hz
     f = Fs * (0:(N/2))/N; % Frequency vector
+    
+    % Compute FFT
     Y = fft(signal);
     P2 = abs(Y/N);
     P1 = P2(1:N/2+1);
     P1(2:end-1) = 2*P1(2:end-1);
     
-    % Find orbital frequency index
-    orbital_freq = 1 / T_orbital;
-    [~, idx_orbital] = min(abs(f - orbital_freq));
-    
-    % Set cutoff to target ratio of orbital frequency
+    % Calculate cutoff frequency
     cutoff_freq = target_ratios(k) * orbital_freq;
-    [~, idx_cutoff] = min(abs(f - cutoff_freq));
-    
-    % Window size approximation: for moving average, window ~ 1 / cutoff_freq
     window_sizes(k) = max(ceil(1 / (cutoff_freq * dt)), 1);
     
-    % Plot frequency spectrum
+    % Plot FFT spectrum (log scale)
     subplot(3,2,k);
-    plot(f./orbital_freq, P1, 'b-', 'LineWidth', 1.5);
+    semilogy(f, P1, 'b-', 'LineWidth', 1.5);
     hold on;
-    % Mark orbital frequency
-    plot([orbital_freq, orbital_freq], ylim, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Orbital Freq');
-    % Mark cutoff frequency
-    plot([cutoff_freq, cutoff_freq], ylim, 'g--', 'LineWidth', 1.5, 'DisplayName', 'Cutoff Freq');
+    
+    % Mark frequencies
+    yrange = ylim;
+    plot([orbital_freq, orbital_freq], yrange, 'r--', 'LineWidth', 2, 'DisplayName', sprintf('f_{orbital} = %.2e Hz', orbital_freq));
+    plot([cutoff_freq, cutoff_freq], yrange, 'g--', 'LineWidth', 2, 'DisplayName', sprintf('f_{cutoff} = %.2e Hz', cutoff_freq));
+    
     hold off;
-    title(element_names{k});
-    xlabel('Adimensional Frequency [-]');
-    ylabel('Amplitude');
-    legend('Spectrum', 'Orbital Freq', 'Cutoff Freq');
+    set(gca, 'XScale', 'log');
+    title(sprintf('%s (Window: %d points)', element_names{k}, window_sizes(k)));
+    xlabel('Frequency [Hz] (log scale)');
+    ylabel('Magnitude (log scale)');
+    legend('Spectrum', 'Orbital Freq', 'Cutoff Freq', 'Location', 'best');
     grid on;
 end
 
-window_a = window_sizes(1);
-window_e = window_sizes(2);
-window_i = window_sizes(3);
-window_Omega = window_sizes(4);
-window_omega = window_sizes(5);
-window_TA = window_sizes(6);
+% Adjust window sizes with minimums
+window_a = max(window_sizes(1), 1000);
+window_e = max(window_sizes(2), 2000);
+window_i = max(window_sizes(3), 5000);
+window_Omega = max(window_sizes(4), 5000);
+window_omega = max(window_sizes(5), 5000);
+window_TA = max(window_sizes(6), 500); % Ajustado a 500
 
-% Ensure minimum window sizes
-window_a = max(window_a, 1000);
-window_e = max(window_e, 2000);
-window_i = max(window_i, 5000);
-window_Omega = max(window_Omega, 5000);
-window_omega = max(window_omega, 5000);
-window_TA = max(window_TA, 200);
+% Print window information
+fprintf('\n=== Low-Pass Filtering Configuration ===\n');
+fprintf('Orbital Period: %.2f seconds (%.4f hours)\n', T_orbital, T_orbital/3600);
+fprintf('Orbital Frequency: %.6e Hz\n', orbital_freq);
+fprintf('Sampling Interval: %d seconds\n', dt);
+fprintf('Points per Orbit: %d\n\n', points_per_orbit);
 
-% Print window sizes
-fprintf('Using window sizes (FFT-based):\n');
-fprintf('  a: %d points (%.1f min)\n', window_a, window_a*dt/60);
-fprintf('  e: %d points (%.1f min)\n', window_e, window_e*dt/60);
-fprintf('  i: %d points (%.1f min)\n', window_i, window_i*dt/60);
-fprintf('  Ω: %d points (%.1f min)\n', window_Omega, window_Omega*dt/60);
-fprintf('  ω: %d points (%.1f min)\n', window_omega, window_omega*dt/60);
-fprintf('  θ: %d points (%.1f min)\n', window_TA, window_TA*dt/60);
+fprintf('Window Sizes:\n');
+fprintf('  a (Semi-major axis):    %d points (%.2f hours, ratio: %.2f)\n', window_a, window_a*dt/3600, target_ratios(1));
+fprintf('  e (Eccentricity):       %d points (%.2f hours, ratio: %.2f)\n', window_e, window_e*dt/3600, target_ratios(2));
+fprintf('  i (Inclination):        %d points (%.2f hours, ratio: %.2f)\n', window_i, window_i*dt/3600, target_ratios(3));
+fprintf('  Ω (RAAN):               %d points (%.2f hours, ratio: %.2f)\n', window_Omega, window_Omega*dt/3600, target_ratios(4));
+fprintf('  ω (Arg. Periapsis):     %d points (%.2f hours, ratio: %.2f)\n', window_omega, window_omega*dt/3600, target_ratios(5));
+fprintf('  θ (True Anomaly):       %d points (%.2f hours, ratio: %.2f)\n', window_TA, window_TA*dt/3600, target_ratios(6));
+fprintf('========================================\n\n');
+
+% Bode plot for moving average filters
+figure('Name', 'Bode Plots of Moving Average Filters');
+Fs = 1 / dt;
+
+for k = 1:6
+    window_sizes_array = [window_a, window_e, window_i, window_Omega, window_omega, window_TA];
+    window_size = window_sizes_array(k);
+    cutoff_freq_k = target_ratios(k) * orbital_freq;
+    
+    % Frequency vector from DC to Nyquist (log scale)
+    f_bode = logspace(-7, log10(Fs/2), 1024);
+    w_bode = 2*pi*f_bode / Fs;
+    
+    % Compute frequency response for moving average filter
+    H = zeros(size(w_bode));
+    for j = 1:length(w_bode)
+        if abs(w_bode(j)) < 1e-10
+            H(j) = 1;
+        else
+            H(j) = (sin(window_size * w_bode(j) / 2) / sin(w_bode(j) / 2)) / window_size;
+        end
+    end
+    
+    % Magnitude in dB
+    mag_dB = 20*log10(abs(H) + 1e-12);
+    
+    % Phase in degrees (with unwrap to remove discontinuities)
+    phase_rad = angle(H);
+    phase_rad_unwrapped = unwrap(phase_rad);
+    phase_deg = rad2deg(phase_rad_unwrapped);
+    
+    % Magnitude plot
+    subplot(6,2,2*k-1);
+    semilogx(f_bode, mag_dB, 'b-', 'LineWidth', 2);
+    hold on;
+    
+    % Mark frequencies
+    yrange = ylim;
+    plot([orbital_freq, orbital_freq], yrange, 'r-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{orb}=%.2e Hz', orbital_freq));
+    plot([cutoff_freq_k, cutoff_freq_k], yrange, 'g-', 'LineWidth', 2.5, 'DisplayName', sprintf('f_{cut}=%.2e Hz', cutoff_freq_k));
+    
+    % Mark -3dB point
+    [~, idx_3db] = min(abs(mag_dB + 3));
+    f_3db = f_bode(idx_3db);
+    plot(f_3db, -3, 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('f_{-3dB}=%.2e Hz', f_3db));
+    
+    hold off;
+    title(sprintf('Magnitude: %s (Window: %d pts)', element_names{k}, window_size));
+    ylabel('Magnitude [dB]');
+    grid on;
+    legend('Response', 'f_{orbital}', 'f_{cutoff}', '-3dB', 'Location', 'best', 'FontSize', 8);
+    set(gca, 'XScale', 'log');
+    
+    % Phase plot (with unwrapped phase for smooth visualization)
+    subplot(6,2,2*k);
+    semilogx(f_bode, phase_deg, 'r-', 'LineWidth', 2);
+    hold on;
+    plot([orbital_freq, orbital_freq], ylim, 'r-', 'LineWidth', 2.5, 'DisplayName', 'f_{orbital}');
+    plot([cutoff_freq_k, cutoff_freq_k], ylim, 'g-', 'LineWidth', 2.5, 'DisplayName', 'f_{cutoff}');
+    plot(f_3db, phase_deg(idx_3db), 'ko', 'MarkerSize', 10, 'DisplayName', sprintf('Phase at -3dB: %.1f°', phase_deg(idx_3db)));
+    hold off;
+    title(sprintf('Phase: %s', element_names{k}));
+    ylabel('Phase [deg]');
+    xlabel('Frequency [Hz]');
+    grid on;
+    legend('Response', 'f_{orbital}', 'f_{cutoff}', 'Location', 'best', 'FontSize', 8);
+    set(gca, 'XScale', 'log');
+    
+    % Print diagnostic information
+    fprintf('Element %d (%s):\n', k, element_names{k});
+    fprintf('  f_orbital = %.6e Hz\n', orbital_freq);
+    fprintf('  f_cutoff = %.6e Hz\n', cutoff_freq_k);
+    fprintf('  f_-3dB = %.6e Hz\n', f_3db);
+    fprintf('  Ratio f_-3dB/f_cutoff = %.4f (ideal: ~1.0)\n', f_3db / cutoff_freq_k);
+    fprintf('  Phase at -3dB: %.2f°\n\n', phase_deg(idx_3db));
+end
+
+fprintf('Bode plots completed with corrected phase.\n');
+fprintf('----------------------------------------\n');
 
 % Apply moving average filters
 a_movmean = movmean(keplerian_history(:,1), window_a, "Endpoints", "fill");
@@ -927,110 +997,86 @@ Omega_movmean = movmean(keplerian_history(:,4), window_Omega, "Endpoints", "fill
 omega_movmean = movmean(keplerian_history(:,5), window_omega, "Endpoints", "fill");
 TA_movmean = movmean(keplerian_history(:,6), window_TA, "Endpoints", "fill");
 
-% Downsample data for plotting if necessary
+% Downsample for plotting
 downsample_factor = floor(length(TPerturbedLong)/10000);
 if downsample_factor > 1
     idx = 1:downsample_factor:length(TPerturbedLong);
     tspan_plot = TPerturbedLong(idx);
-    a_plot = keplerian_history(idx,1);
-    a_movmean_plot = a_movmean(idx);
-    e_plot = keplerian_history(idx,2);
-    e_movmean_plot = e_movmean(idx);
-    i_plot = keplerian_history(idx,3);
-    i_movmean_plot = i_movmean(idx);
-    Omega_plot = keplerian_history(idx,4);
-    Omega_movmean_plot = Omega_movmean(idx);
-    omega_plot = keplerian_history(idx,5);
-    omega_movmean_plot = omega_movmean(idx);
-    TA_plot = keplerian_history(idx,6);
-    TA_movmean_plot = TA_movmean(idx);
 else
+    idx = 1:length(TPerturbedLong);
     tspan_plot = TPerturbedLong;
-    a_plot = keplerian_history(:,1);
-    a_movmean_plot = a_movmean;
-    e_plot = keplerian_history(:,2);
-    e_movmean_plot = e_movmean;
-    i_plot = keplerian_history(:,3);
-    i_movmean_plot = i_movmean;
-    Omega_plot = keplerian_history(:,4);
-    Omega_movmean_plot = Omega_movmean;
-    omega_plot = keplerian_history(:,5);
-    omega_movmean_plot = omega_movmean;
-    TA_plot = keplerian_history(:,6);
-    TA_movmean_plot = TA_movmean;
 end
 
-% Plot filtered geometric elements
-figure('Name','Geometric Keplerian Elements History')
-subplot(3,2,1)
-hold on
-plot(tspan_plot./86400, a_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, a_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('Semi-major Axis [km]')
-xlabel('Time [days]')
-ylabel('a [km]')
-legend('Location','best')
-grid on
+% Plot filtered results
+figure('Name','Filtered Keplerian Elements History');
+subplot(3,2,1);
+plot(tspan_plot./86400, keplerian_history(idx,1), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, a_movmean(idx), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('Semi-major Axis');
+xlabel('Time [days]');
+ylabel('[km]');
+legend('Location','best');
+grid on;
 
-subplot(3,2,2)
-hold on
-plot(tspan_plot./86400, rad2deg(i_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, rad2deg(i_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('Inclination [deg]')
-xlabel('Time [days]')
-ylabel('i [deg]')
-legend('Location','best')
-grid on
+subplot(3,2,2);
+plot(tspan_plot./86400, rad2deg(keplerian_history(idx,3)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, rad2deg(i_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('Inclination');
+xlabel('Time [days]');
+ylabel('[deg]');
+legend('Location','best');
+grid on;
 
-subplot(3,2,3)
-hold on
-plot(tspan_plot./86400, e_plot, 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, e_movmean_plot, 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('Eccentricity [-]')
-xlabel('Time [days]')
-ylabel('e [-]')
-legend('Location','best')
-grid on
+subplot(3,2,3);
+plot(tspan_plot./86400, keplerian_history(idx,2), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, e_movmean(idx), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('Eccentricity');
+xlabel('Time [days]');
+ylabel('[-]');
+legend('Location','best');
+grid on;
 
-subplot(3,2,4)
-hold on
-plot(tspan_plot./86400, rad2deg(Omega_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, rad2deg(Omega_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('Right Ascension Ascending Node [deg]')
-xlabel('Time [days]')
-ylabel('Ω [deg]')
-legend('Location','best')
-grid on
+subplot(3,2,4);
+plot(tspan_plot./86400, rad2deg(keplerian_history(idx,4)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, rad2deg(Omega_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('Right Ascension Ascending Node');
+xlabel('Time [days]');
+ylabel('[deg]');
+legend('Location','best');
+grid on;
 
-subplot(3,2,5)
-hold on
-plot(tspan_plot./86400, rad2deg(omega_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, rad2deg(omega_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('Argument of Periapsis [deg]')
-xlabel('Time [days]')
-ylabel('ω [deg]')
-legend('Location','best')
-grid on
+subplot(3,2,5);
+plot(tspan_plot./86400, rad2deg(keplerian_history(idx,5)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, rad2deg(omega_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('Argument of Periapsis');
+xlabel('Time [days]');
+ylabel('[deg]');
+legend('Location','best');
+grid on;
 
-subplot(3,2,6)
-hold on
-plot(tspan_plot./86400, rad2deg(TA_plot), 'b', 'DisplayName','Propagated', 'LineWidth', 0.5)
-plot(tspan_plot./86400, rad2deg(TA_movmean_plot), 'r', 'DisplayName','Filtered', 'LineWidth', 2)
-hold off
-title('True Anomaly [deg]')
-xlabel('Time [days]')
-ylabel('θ [deg]')
-legend('Location','best')
-grid on
+subplot(3,2,6);
+plot(tspan_plot./86400, rad2deg(keplerian_history(idx,6)), 'b', 'DisplayName','Raw', 'LineWidth', 0.5);
+hold on;
+plot(tspan_plot./86400, rad2deg(TA_movmean(idx)), 'r', 'DisplayName','Filtered', 'LineWidth', 2);
+hold off;
+title('True Anomaly');
+xlabel('Time [days]');
+ylabel('[deg]');
+legend('Location','best');
+grid on;
 
-fprintf('Plotting Filtered Keplerian Elements History from Perturbed Orbit.\n');
+fprintf('Low-Pass Filtering completed successfully.\n');
 fprintf('----------------------------------------\n');
-
 
 
 
@@ -1087,7 +1133,7 @@ subplot(3,2,5);
 plot(TGauss./86400, rad2deg(domega_dt_secular) * 86400 * 365.25);
 xlabel('Time [days]');
 ylabel('dω/dt [deg/year]');
-title('Argument of Perigee Rate');
+title('Argument of Periapsis Rate');
 grid on;
 
 fprintf('Analyzing Secular Rates from Gauss Integration.\n');
@@ -1323,7 +1369,10 @@ TPerturbed_1day = TPerturbed(idx_1day_anim);
 figure('Name','Animation - 1 Day')
 hold on
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
-xlim([-9000 9000]); ylim([-9000 9000]); zlim([-9000 9000]);
+xlim([-9000 9000]);
+ylim([-9000 9000]);
+zlim([-9000 9000]);
+
 title('Orbit Animation - 1 Day with J2 and Drag Perturbations');
 axis equal;
 grid on;
