@@ -8,9 +8,6 @@ close all
 % and resources, and setting up physical constants, Earth model, and initial parameters
 % for the orbital mechanics simulation.
 
-% Define conversion functions for degrees to radians and days to seconds
-deg2rad = @(x) x*pi/180;
-day2sec = @(d) d*86400;
 
 % Add paths for ephemeris data, custom functions, and time conversion utilities
 addpath("Code\Assignment2\Ephemeris\")
@@ -261,7 +258,7 @@ y_perturbed_initial = [r_perturbed_initial; v_perturbed_initial];
 % Calculate orbital period and time span
 a_perturbed_initial = kep_parameters(1);
 T_perturbed_initial = 2*pi*sqrt(a_perturbed_initial^3/mu_E);
-tspan_perturbed = linspace(0, 5*T_groundtrack, floor(T_groundtrack));
+tspan_perturbed = linspace(0, T_groundtrack, floor(T_groundtrack));
 
 % Integrate with perturbations
 [TPerturbed, YPerturbed] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_perturbed, y_perturbed_initial, options);
@@ -274,7 +271,7 @@ v_perturbed = YPerturbed(:,4:6);
 figure('Name','Perturbed Orbit')
 hold on
 %plot3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3))
-scatter3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3), 10, 1:length(YPerturbed), 'filled');
+scatter3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3), 10, TPerturbed./86400, 'filled');
 surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none');
 hold off;
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
@@ -287,8 +284,9 @@ axis equal;
 grid on;
 view(45,30);
 legend('Orbit','Earth');
-colorbar;
-caxis([1/(60*24*60) length(YPerturbed)/(60*24*60)]); % Set color axis to represent time in days
+c = colorbar;
+c.Label.String = 'Time [days]';
+caxis([0 TPerturbed(end)/86400]); % Set color axis to represent time in days
 
 % Add colorbar for orbit coloring by index
 
@@ -953,7 +951,7 @@ fprintf('Total duration: %.2f days\n\n', TPerturbedLong(end)/86400);
 % J2 effects: typically 1-10 cycles per day for LEO
 % Drag effects: even slower secular decay
 % Use 0.01 to 0.1 of orbital frequency for better results
-target_ratios = [0.05, 0.05, 0.02, 0.01, 0.01, 0.1]; % [a, e, i, Ω, ω, θ]
+target_ratios = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]; % [a, e, i, Ω, ω, θ]
 element_names = {'Semi-major Axis (a)', 'Eccentricity (e)', 'Inclination (i)', 'RAAN (Ω)', 'A. of Periapsis (ω)', 'True Anomaly (θ)'};
 
 % ========================================
@@ -1226,6 +1224,9 @@ OM_eph_tank = deg2rad(mission_info_tank(:,4));
 w_eph_tank = deg2rad(mission_info_tank(:,5));
 TA_eph_tank = deg2rad(mission_info_tank(:,9));
 keplerian_elements_eph_tank = [a_eph_tank, e_eph_tank, i_eph_tank, OM_eph_tank, w_eph_tank, TA_eph_tank];
+
+keplerian_elements_eph_tank(:,4) = unwrap(keplerian_elements_eph_tank(:,4));
+keplerian_elements_eph_tank(:,5) = unwrap(keplerian_elements_eph_tank(:,5));
 keplerian_elements_eph_tank(:,6) = unwrap(keplerian_elements_eph_tank(:,6));
 
 a_eph_titan = mission_info_titan(:,10);
@@ -1235,6 +1236,8 @@ OM_eph_titan = deg2rad(mission_info_titan(:,4));
 w_eph_titan = deg2rad(mission_info_titan(:,5));
 TA_eph_titan = deg2rad(mission_info_titan(:,9));
 keplerian_elements_eph_titan = [a_eph_titan, e_eph_titan, i_eph_titan, OM_eph_titan, w_eph_titan, TA_eph_titan];
+keplerian_elements_eph_titan(:,4) = unwrap(keplerian_elements_eph_titan(:,4));
+keplerian_elements_eph_titan(:,5) = unwrap(keplerian_elements_eph_titan(:,5));
 keplerian_elements_eph_titan(:,6) = unwrap(keplerian_elements_eph_titan(:,6));
 
 % Initial elements for propagation
@@ -1249,63 +1252,6 @@ tspan_eph_titan = seconds(utc_time_titan - utc_time_titan(1));
 [TGauss_tank, KepGauss_tank] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), tspan_eph_tank, kep_initial_tank', options);
 [TGauss_titan, KepGauss_titan] = ode113(@(t, y) gauss_planetary_equations(t, y, mu_E, a_per_func), tspan_eph_titan, kep_initial_titan', options);
 
-% Compute ground tracks from Gauss results
-gtrack_data_gauss_tank = zeros(length(TGauss_tank), 4);
-gtrack_data_gauss_titan = zeros(length(TGauss_titan), 4);
-for i = 1:length(TGauss_tank)
-    [r_gauss_tank, ~] = kep2car(KepGauss_tank(i,:)', mu_E);
-    R_gauss_tank = norm(r_gauss_tank);
-    delta_gauss_tank = asin(r_gauss_tank(3) / R_gauss_tank);
-    alpha_gauss_tank = atan2(r_gauss_tank(2), r_gauss_tank(1));
-    theta_g_gauss_tank = theta_g_t0_rad + w_earth_rad * TGauss_tank(i);
-    lon_gauss_tank = rad2deg(alpha_gauss_tank - theta_g_gauss_tank);
-    gtrack_data_gauss_tank(i,3) = mod(lon_gauss_tank + 180, 360) - 180;
-    gtrack_data_gauss_tank(i,4) = rad2deg(delta_gauss_tank);
-end
-for i = 1:length(TGauss_titan)
-    [r_gauss_titan, ~] = kep2car(KepGauss_titan(i,:)', mu_E);
-    R_gauss_titan = norm(r_gauss_titan);
-    delta_gauss_titan = asin(r_gauss_titan(3) / R_gauss_titan);
-    alpha_gauss_titan = atan2(r_gauss_titan(2), r_gauss_titan(1));
-    theta_g_gauss_titan = theta_g_t0_rad + w_earth_rad * TGauss_titan(i);
-    lon_gauss_titan = rad2deg(alpha_gauss_titan - theta_g_gauss_titan);
-    gtrack_data_gauss_titan(i,3) = mod(lon_gauss_titan + 180, 360) - 180;
-    gtrack_data_gauss_titan(i,4) = rad2deg(delta_gauss_titan);
-end
-
-fprintf('Processing ephemeris ground track for Tank...\n');
-gtrack_data_eph_tank = zeros(length(utc_time_tank), 4);
-for i = 1:length(utc_time_tank)
-    [r_eph_tank, v_eph_tank] = kep2car(keplerian_elements_eph_tank(i,:), mu_E);
-    dt_tank = seconds(utc_time_tank(i) - utc_time_tank(1));
-    R_eph_tank = norm(r_eph_tank);
-    delta_eph_tank = asin(r_eph_tank(3) / R_eph_tank);
-    gtrack_data_eph_tank(i,1) = delta_eph_tank;
-    alpha_eph_tank = atan2(r_eph_tank(2), r_eph_tank(1));
-    gtrack_data_eph_tank(i,2) = alpha_eph_tank;
-    theta_g_eph_tank = theta_g_t0_rad + w_earth_rad * dt_tank;
-    lon_eph_tank = rad2deg(alpha_eph_tank - theta_g_eph_tank);
-    gtrack_data_eph_tank(i,3) = mod(lon_eph_tank + 180, 360) - 180;
-    gtrack_data_eph_tank(i,4) = rad2deg(delta_eph_tank);
-end
-
-
-% Process ephemeris ground track
-fprintf('Processing ephemeris ground track for Titan...\n');
-gtrack_data_eph_titan = zeros(length(utc_time_titan), 4);
-for i = 1:length(utc_time_titan)
-    [r_eph_titan, v_eph_titan] = kep2car(keplerian_elements_eph_titan(i,:), mu_E);
-    dt_titan = seconds(utc_time_titan(i) - utc_time_titan(1));
-    R_eph_titan = norm(r_eph_titan);
-    delta_eph_titan = asin(r_eph_titan(3) / R_eph_titan);
-    gtrack_data_eph_titan(i,1) = delta_eph_titan;
-    alpha_eph_titan = atan2(r_eph_titan(2), r_eph_titan(1));
-    gtrack_data_eph_titan(i,2) = alpha_eph_titan;
-    theta_g_eph_titan = theta_g_t0_rad + w_earth_rad * dt_titan;
-    lon_eph_titan = rad2deg(alpha_eph_titan - theta_g_eph_titan);
-    gtrack_data_eph_titan(i,3) = mod(lon_eph_titan + 180, 360) - 180;
-    gtrack_data_eph_titan(i,4) = rad2deg(delta_eph_titan);
-end
 
 fprintf('Plotting results...\n');
 
