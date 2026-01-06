@@ -140,7 +140,7 @@ for i = 1:length(TNominal)
     gtrack_data(i,2) = atan2(r_nominal(i,2), r_nominal(i,1)); % alpha
     
     % Compute Greenwich sidereal time at current time
-    theta_g_deg = theta_g_t_0 + deg2rad(w_earth_rad) * (TNominal(i) - t_0);
+    theta_g_deg = theta_g_t_0 + rad2deg(w_earth_rad) * (TNominal(i) - t_0);
     theta_g_rad = deg2rad(theta_g_deg);
     
     % Calculate longitude by subtracting GST from right ascension, and wrap to [-180, 180]
@@ -311,10 +311,10 @@ for i = 1:length(TPerturbed)
     gtrack_data_perturbed(i,2) = atan2(r_perturbed(i,2), r_perturbed(i,1));
     
     % Compute Greenwich sidereal time
-    theta_g = theta_g_t_0 + w_earth_rad * (TPerturbed(i) - t_0);
-    
+    theta_g_deg = theta_g_t_0 + rad2deg(w_earth_rad) * (TPerturbed(i) - t_0);
+    theta_g_rad = deg2rad(theta_g_deg);
     % Calculate longitude and latitude
-    lon = rad2deg(gtrack_data_perturbed(i,2) - theta_g);
+    lon = rad2deg(gtrack_data_perturbed(i,2) - theta_g_rad);
     gtrack_data_perturbed(i,3) = mod(lon + 180, 360) - 180;
     gtrack_data_perturbed(i,4) = rad2deg(gtrack_data_perturbed(i,1));
 end
