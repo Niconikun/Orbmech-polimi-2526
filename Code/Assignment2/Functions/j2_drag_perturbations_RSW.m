@@ -30,7 +30,7 @@ function a_per = j2_drag_perturbations_RSW(t, kep, mu, J2, R, omega, c_d, AoverM
     
     % Atmospheric drag in Cartesian frame
     altitude = rnorm - R;
-    rho = ExponentialaAtmosphericModel(altitude)*1e-9;  % Your atmospheric model
+    rho = ExponentialaAtmosphericModel(altitude)*1e9;  % Your atmospheric model
     
     % Relative velocity
     v_rel = v - cross(omega, r);

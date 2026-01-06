@@ -48,15 +48,15 @@ function dkep_dt = gauss_planetary_equations(~, kep, mu, a_per_func)
     
     di_dt = (r * cos(u) / h) * a_N; %good
     
-    dOmega_dt = (r * sin(u) / (h * sin(i))) * a_N; %good
+    dOmega_dt = (r * sin(u) / (h * sin(i))) * a_N; 
     
     domega_dt = (1 / (h * e)) * (-p * cos(theta) * a_R + ...
                                 (p + r) * sin(theta) * a_T) - ...
-                (r * sin(u) * cos(i) / (h * sin(i))) * a_N; %good
+                (r * sin(u) * cos(i) / (h * sin(i))) * a_N;
     
     dtheta_dt = (h / r^2) + ...
                 (1 / (e * h)) * (p * cos(theta) * a_R - ...
-                                (p + r) * sin(theta) * a_T); %good
+                                (p + r) * sin(theta) * a_T);
     
     % Handle special case for circular orbits (e ≈ 0)
     if e < 1e-10

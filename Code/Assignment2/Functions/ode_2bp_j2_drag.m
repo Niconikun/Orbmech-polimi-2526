@@ -25,6 +25,7 @@ function dy = ode_2bp_j2_drag( ~, y, mu, J2, R, omega, c_d, AoverMass)
 r = y(1:3);
 v = y(4:6);
 % Distance from the primary
+R_Equatorial_E = 6378.137; % Equatorial Radius [km]
 rnorm = norm(r);
 
 altitude = rnorm - R;
@@ -36,7 +37,7 @@ z_position = r(3);
 v_rel = v - cross(omega,r);
 
 %density
-rho = ExponentialaAtmosphericModel(altitude).*1e-9;
+rho = ExponentialaAtmosphericModel(altitude).*1e9; %kg/km^3
 
 % Calculate the drag force
 a_drag = -0.5 .* c_d .* AoverMass .* rho .* norm(v_rel).* v_rel;

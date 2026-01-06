@@ -21,13 +21,14 @@ addpath('Code\Assignment2\img')
 % Define physical constants for Earth
 mu_E = astroConstants(13); % Earth's gravitational parameter [km^3/s^2]
 R_E = astroConstants(23);  % Earth radius [km]
+R_Equatorial_E = 6378.137; % Equatorial Radius [km]
 J2_E = astroConstants(33); % Earth J2 coefficient
 
 % Load Earth texture image for visualization
 EarthImage = imread('img\earth.jpg');
 
 % Calculate Earth's angular velocity for sidereal rotation
-w_earth_rad = 2*pi/(astroConstants(53)*60*60);
+w_earth_rad = 2*pi/(astroConstants(53)*60*60); 
 omega_E = [0;0;w_earth_rad]; % Angular velocity vector [rad/s]
 
 % Set simulation parameters: number of orbits (m), scaling factor (k), and start date
@@ -58,7 +59,7 @@ ZS = ZS * -scaleFactor;
 w_earth = 360 / 86164; % Sidereal rotation rate [deg/s]
 t_0 = 0; % Reference time
 theta_g_t_0 = Greenwich_longitude(starting_date); % Initial Greenwich sidereal time [deg]
-theta_g_t0_rad = deg2rad(0); % Initial GST in radians
+theta_g_t0_rad = deg2rad(theta_g_t_0); % Initial GST in radians
 
 % Define initial Keplerian orbital elements
 kep_parameters = [0.69427e4, 0.0277, deg2rad(85), deg2rad(72), deg2rad(130), 0]; % [a (km), e, i (rad), Omega (rad), omega (rad), theta (rad)]
@@ -139,10 +140,11 @@ for i = 1:length(TNominal)
     gtrack_data(i,2) = atan2(r_nominal(i,2), r_nominal(i,1)); % alpha
     
     % Compute Greenwich sidereal time at current time
-    theta_g = theta_g_t_0 + w_earth_rad * (TNominal(i) - t_0);
+    theta_g_deg = theta_g_t_0 + deg2rad(w_earth_rad) * (TNominal(i) - t_0);
+    theta_g_rad = deg2rad(theta_g_deg);
     
     % Calculate longitude by subtracting GST from right ascension, and wrap to [-180, 180]
-    lon = rad2deg(gtrack_data(i,2) - theta_g);
+    lon = rad2deg(gtrack_data(i,2) - theta_g_rad);
     gtrack_data(i,3) = mod(lon + 180, 360) - 180;
     
     % Calculate latitude in degrees
@@ -186,10 +188,11 @@ for i = 1:length(TRepeat)
     gtrack_data_repeat(i,2) = atan2(r_repeat(i,2), r_repeat(i,1));
     
     % Compute Greenwich sidereal time
-    theta_g = theta_g_t_0 + w_earth_rad * (TRepeat(i) - t_0);
-    
+    theta_g_deg = theta_g_t_0 + rad2deg(w_earth_rad) * (TRepeat(i) - t_0);
+    theta_g_rad = deg2rad(theta_g_deg);
+
     % Calculate longitude and latitude
-    lon = rad2deg(gtrack_data_repeat(i,2) - theta_g);
+    lon = rad2deg(gtrack_data_repeat(i,2) - theta_g_rad);
     gtrack_data_repeat(i,3) = mod(lon + 180, 360) - 180;
     gtrack_data_repeat(i,4) = rad2deg(gtrack_data_repeat(i,1));
 end
@@ -232,10 +235,11 @@ for i = 1:length(TRepeatPerturbed)
     gtrack_data_repeat_perturbed(i,2) = atan2(r_repeat_perturbed(i,2), r_repeat_perturbed(i,1));
     
     % Compute Greenwich sidereal time
-    theta_g = theta_g_t_0 + w_earth_rad * (TRepeatPerturbed(i) - t_0);
+    theta_g_deg = theta_g_t_0 + rad2deg(w_earth_rad) * (TRepeatPerturbed(i) - t_0);
+    theta_g_rad = deg2rad(theta_g_deg);
     
     % Calculate longitude and latitude
-    lon = rad2deg(gtrack_data_repeat_perturbed(i,2) - theta_g);
+    lon = rad2deg(gtrack_data_repeat_perturbed(i,2) - theta_g_rad);
     gtrack_data_repeat_perturbed(i,3) = mod(lon + 180, 360) - 180;
     gtrack_data_repeat_perturbed(i,4) = rad2deg(gtrack_data_repeat_perturbed(i,1));
 end
@@ -996,6 +1000,13 @@ for k = 1:6
     legend('Spectrum', 'Orbital Freq', 'Cutoff Freq', 'Location', 'best');
     grid on;
 end
+
+window_a = window_sizes(1);
+window_e = window_sizes(2);
+window_i = window_sizes(3);
+window_Omega = window_sizes(4);
+window_omega = window_sizes(5);
+window_TA = window_sizes(6);
 
 % ========================================
 % STEP 2: Apply Minimum Window Constraints
