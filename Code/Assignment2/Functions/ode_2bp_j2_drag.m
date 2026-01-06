@@ -36,7 +36,7 @@ z_position = r(3);
 v_rel = v - cross(omega,r);
 
 %density
-rho = ExponentialaAtmosphericModel(altitude);
+rho = ExponentialaAtmosphericModel(altitude).*1e-9;
 
 % Calculate the drag force
 a_drag = -0.5 .* c_d .* AoverMass .* rho .* norm(v_rel).* v_rel;

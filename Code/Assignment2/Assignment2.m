@@ -43,7 +43,7 @@ tspan(end) = []; % Remove last element to avoid duplication
 
 % Define drag parameters: coefficient and area-to-mass ratio
 c_d = 2.1; % Drag coefficient [-]
-AreaOverMass = 0.01318; % Area-to-mass ratio [m^2/kg]
+AreaOverMass = 0.01318e-6; % Area-to-mass ratio [km^2/kg]
 
 % Generate a spherical mesh for Earth representation
 [XS,YS,ZS] = sphere(50);
@@ -57,7 +57,7 @@ ZS = ZS * -scaleFactor;
 % Initialize Earth rotation parameters for ground track calculations
 w_earth = 360 / 86164; % Sidereal rotation rate [deg/s]
 t_0 = 0; % Reference time
-theta_g_t_0 = 0; % Initial Greenwich sidereal time [deg]
+theta_g_t_0 = Greenwich_longitude(starting_date); % Initial Greenwich sidereal time [deg]
 theta_g_t0_rad = deg2rad(0); % Initial GST in radians
 
 % Define initial Keplerian orbital elements
@@ -1000,13 +1000,6 @@ end
 % ========================================
 % STEP 2: Apply Minimum Window Constraints
 % ========================================
-% Adjust window sizes with physically meaningful minimums
-window_a = max(window_sizes(1), 1000);
-window_e = max(window_sizes(2), 2000);
-window_i = max(window_sizes(3), 5000);
-window_Omega = max(window_sizes(4), 5000);
-window_omega = max(window_sizes(5), 5000);
-window_TA = max(window_sizes(6), 500);
 
 % Validate windows don't exceed data length
 max_window = max([window_a, window_e, window_i, window_Omega, window_omega, window_TA]);
@@ -1443,7 +1436,6 @@ for i = 1:step:length(YPerturbed_1day)
     vel_vec = vel_vec / norm(vel_vec); % Unit velocity vector
     set(h_vel, 'XData', pos(1), 'YData', pos(2), 'ZData', pos(3), 'UData', vel_vec(1)*1000, 'VData', vel_vec(2)*1000, 'WData', vel_vec(3)*1000); % Scaled for visibility
 
-    
     drawnow;
     pause(0.000001); % Short pause; adjust for speed
 end
