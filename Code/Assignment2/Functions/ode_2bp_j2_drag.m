@@ -20,12 +20,17 @@ function dy = ode_2bp_j2_drag( ~, y, mu, J2, R, omega, c_d, AoverMass)
 % OUTPUT:
 % dy[6x1] Derivative of the state [ L/T^2, L/T^3 ]
 %
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-12: First version
+% 
 % -------------------------------------------------------------------------
 % Position and velocity
 r = y(1:3);
 v = y(4:6);
 % Distance from the primary
-R_Equatorial_E = 6378.137; % Equatorial Radius [km]
 rnorm = norm(r);
 
 altitude = rnorm - R;
