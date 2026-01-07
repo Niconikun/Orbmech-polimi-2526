@@ -5,6 +5,9 @@ function required_a = RepeatingGroundTrack(m,k,omega,mu)
     % omega, the angular velocity of the planet in radians per second, and 
     % mu, the gravitational parameter of the planet.
     %
+    % PROTOTYPE
+    %   required_a = RepeatingGroundTrack(m, k, omega, mu)
+    %
     % Inputs:
     %   m - integer representing the number of repeat cycles
     %   k - integer representing the number of ground track repeats
@@ -14,6 +17,15 @@ function required_a = RepeatingGroundTrack(m,k,omega,mu)
     % Outputs:
     %   required_a - the calculated semi-major axis required for the 
     %   repeating ground track (meters)
+    %
+    % CONTRIBUTORS:
+    %   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+    % 
+    % VERSIONS
+    %   2025-11: First version
+    % 
+    % -------------------------------------------------------------------------
+
     n = omega * (k/ m);
     
     %T = (2*pi/omega)*m/k;
