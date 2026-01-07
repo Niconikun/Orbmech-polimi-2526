@@ -1,6 +1,9 @@
 function dkep_dt = gauss_planetary_equations(~, kep, mu, a_per_func)
 % GAUSS_PLANETARY_EQUATIONS Computes derivatives of Keplerian elements using Gauss equations
 %
+% PROTOTYPE
+%   dkep_dt = gauss_planetary_equations(t, kep, mu, a_per_func)
+%
 % INPUT:
 %   t          - Time (can be omitted for autonomous systems)
 %   kep        - Keplerian elements [6x1]: [a; e; i; Omega; omega; theta] (angles in radians)
@@ -14,6 +17,13 @@ function dkep_dt = gauss_planetary_equations(~, kep, mu, a_per_func)
 % REFERENCES:
 %   Montenbruck & Gill (2000), "Satellite Orbits"
 %   Vallado (2013), "Fundamentals of Astrodynamics and Applications"
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-12: First version
+% 
+% -------------------------------------------------------------------------
 
     % Extract Keplerian elements
     a = kep(1);         % Semi-major axis [km]
