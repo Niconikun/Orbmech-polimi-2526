@@ -19,6 +19,16 @@ function density = ExponentialaAtmosphericModel(altitude)
     % for different altitude ranges. The function iterates through the 
     % 'base_altitude' array to find the appropriate range for the input 
     % altitude and applies the exponential formula to compute the density.
+    %
+    %
+    % CONTRIBUTORS:
+    %   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+    % 
+    % VERSIONS
+    %   2025-12-22: First version
+    % -------------------------------------------------------------------------
+
+
     scale_heights = [7.249 6.349 6.682 7.554 8.382 7.714 6.549 5.799 5.382 ... 
         5.877 7.263 9.473 12.636 16.149 22.523 29.470 37.105 45.546 53.628 ...
         53.298 58.515 60.828 63.822 71.835 88.667 124.64 181.05 268.00];
