@@ -47,10 +47,8 @@
 %  - Integration method comparison statistics
 %  - Ephemeris vs. propagated trajectory comparisons
 %
-%  AUTHOR: Orbital Mechanics Course - Politecnico di Milano
-%  COURSE: Orbital Mechanics 2526
-%  DATE CREATED: 2037
-%  LAST MODIFIED: [Latest Update]
+%  AUTHOR: Alicia Muscas, Federico Masiero, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+%  VERSIONS: Version 77. Final version completed on 2026-01-07
 %
 %  REFERENCES:
 %  [1] Curtis, H. D. (2013). Orbital Mechanics for Engineering Students.
@@ -69,7 +67,11 @@
 %
 %  WARNING: Execution time is approximately 2-5 minutes on standard hardware
 %  due to 2-year long-term integration and FFT computations.
-%
+%  
+% How to use:
+%  - Ensure all required functions and data files are in the MATLAB path.
+%  - Have included the Signals Processing Toolbox for filter analysis.
+%  - Run the script from the Code/Assignment2/ directory.
 % ========================================================================
 clc
 clearvars
