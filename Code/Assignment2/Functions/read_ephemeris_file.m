@@ -4,7 +4,6 @@ function [time_utc, keplerian_elements] = read_ephemeris_file(filename)
 %   JPL Horizons ephemeris file and returns:
 %   - time_utc: datetime array of observation times
 %   - keplerian_elements: matrix containing Keplerian orbital elements
-%
 %   Keplerian elements columns:
 %   1: Eccentricity (EC)
 %   2: Periapsis distance (QR) [km]
@@ -18,6 +17,25 @@ function [time_utc, keplerian_elements] = read_ephemeris_file(filename)
 %   10: Semi-major axis (A) [km]
 %   11: Apoapsis distance (AD) [km]
 %   12: Orbital period (PR) [sec]
+
+% PROTOTYPE
+%   [time_utc, keplerian_elements] = read_ephemeris_file(filename)
+%
+% Inputs:
+%   filename - String, path to the ephemeris file
+%
+% Outputs:
+%   time_utc           - Datetime array of observation times
+%   keplerian_elements - Matrix of Keplerian elements [num_points x 12]
+%
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-11: First version
+% 
+% -------------------------------------------------------------------------
+
 
     % Open and read the file
     fid = fopen(filename, 'r');
