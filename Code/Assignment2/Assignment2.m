@@ -1,13 +1,99 @@
+%% ========================================================================
+%  ORBITAL MECHANICS SIMULATION AND ANALYSIS - ASSIGNMENT 2
+%  ========================================================================
+%
+%  DESCRIPTION:
+%  This comprehensive MATLAB script performs a detailed orbital mechanics
+%  analysis including nominal orbits, repeating ground tracks, perturbations
+%  (J2 zonal harmonics and atmospheric drag), and ground track visualization.
+%  It compares Cartesian and Keplerian integration methods and analyzes the
+%  orbital evolution of real satellites.
+%
+%  MAIN OBJECTIVES:
+%  1. Compute and visualize nominal two-body problem orbits
+%  2. Calculate repeating ground track orbits with Earth rotation resonance
+%  3. Model perturbations: J2 effects and atmospheric drag
+%  4. Generate 3D orbital trajectories and 2D ground track maps
+%  5. Compare Cartesian and Gauss Planetary Equations integration methods
+%  6. Perform Keplerian elements history analysis with low-pass filtering
+%  7. Analyze real satellite ephemeris data (BREEZE-M TANK, TITAN 3C)
+%  8. Create animated visualization of orbital dynamics
+%
+%  KEY FEATURES:
+%  - High-precision ODE integration (RelTol: 1e-13, AbsTol: 1e-14)
+%  - FFT-based filter window sizing for optimal signal processing
+%  - Bode plot analysis of moving average filters
+%  - Comprehensive error statistics (Cartesian vs Gauss comparison)
+%  - Real satellite ephemeris data integration and visualization
+%  - Ground track discontinuity handling for accurate mapping
+%
+%  PHYSICAL MODELS:
+%  - Two-Body Problem: Standard gravitational dynamics
+%  - J2 Perturbation: Oblateness effect (most significant perturbation for LEO)
+%  - Atmospheric Drag: Exponential density model with drag coefficient
+%  - Earth Rotation: Sidereal rotation for ground track calculation
+%
+%  INPUT DATA:
+%  - Keplerian elements: a, e, i, Ω, ω, θ (true anomaly)
+%  - Physical constants: μ_E, R_E, J2, atmospheric parameters
+%  - Ephemeris files: Real satellite TLE data
+%  - Earth texture image: earth.jpg for 3D visualization
+%
+%  OUTPUT ANALYSIS:
+%  - 3D orbital plots with Earth sphere
+%  - Ground track maps (1 orbit, 1 day, 12 days periods)
+%  - Keplerian elements evolution over 2 years
+%  - Filter response analysis (magnitude and phase)
+%  - Integration method comparison statistics
+%  - Ephemeris vs. propagated trajectory comparisons
+%
+%  AUTHOR: Orbital Mechanics Course - Politecnico di Milano
+%  COURSE: Orbital Mechanics 2526
+%  DATE CREATED: 2037
+%  LAST MODIFIED: [Latest Update]
+%
+%  REFERENCES:
+%  [1] Curtis, H. D. (2013). Orbital Mechanics for Engineering Students.
+%  [2] Vallado, D. A., Crawford, P., Hujsak, R. S., & Kelso, T. S. (2006).
+%      Revisiting Spacetrack Report #3. AIAA/AAS Astrodynamics Specialist
+%      Conference and Exhibit.
+%
+%  SIMULATION PARAMETERS:
+%  - Initial Orbit: Polar Low Earth Orbit (LEO)
+%  - Semi-major axis: 6942.7 km
+%  - Eccentricity: 0.0277 (nearly circular)
+%  - Inclination: 85° (polar)
+%  - Ground track: 12 orbits in 1 mean solar day (k=1, m=12)
+%  - Integration period: Up to 2 years
+%  - Numerical precision: Double precision floating-point
+%
+%  WARNING: Execution time is approximately 2-5 minutes on standard hardware
+%  due to 2-year long-term integration and FFT computations.
+%
+% ========================================================================
 clc
 clearvars
 close all
-
 %% Constants and Setup
 % This section initializes the simulation environment by clearing the workspace,
 % defining unit conversion functions, adding necessary paths for custom functions
 % and resources, and setting up physical constants, Earth model, and initial parameters
 % for the orbital mechanics simulation.
-
+%
+% INITIALIZATION STEPS:
+% 1. Add paths: Ephemeris data, custom functions, time conversion utilities
+% 2. Load physical constants from astroConstants function
+% 3. Initialize Earth model parameters (radius, J2, rotation rate)
+% 4. Set simulation parameters (m, k for ground track resonance)
+% 5. Configure ODE solver tolerances for high precision
+% 6. Define atmospheric/drag parameters
+%
+% KEY PARAMETERS EXPLAINED:
+% - m: Number of orbits per mean solar day (repeating ground track cycles)
+% - k: Number of mean solar days per ground track cycle
+% - Resonance condition: m*n_orbital = k*n_Earth for repeating ground track
+%   where n_orbital, n_Earth are orbital angular frequencies
+% -------------------------------------------------------------------------
 
 % Add paths for ephemeris data, custom functions, and time conversion utilities
 addpath("Code\Assignment2\Ephemeris\")
@@ -68,12 +154,27 @@ fprintf('Setting up. Please wait...\n');
 fprintf('----------------------------------------\n');
 
 %% Nominal Orbit
-% This section computes and visualizes the unperturbed two-body problem orbit.
-% It starts by converting initial Keplerian elements to Cartesian coordinates,
-% defines the time span based on the orbital period, integrates the equations
-% of motion using ODE113, extracts position and velocity data, and plots the
-% orbit in 3D space with Earth as a textured sphere. Finally, it prints key
-% orbital characteristics for verification.
+% SECTION OBJECTIVE:
+% Compute and visualize the unperturbed two-body problem orbit to establish
+% the baseline orbital dynamics without any perturbations.
+%
+% METHODOLOGY:
+% 1. Convert Keplerian to Cartesian coordinates using standard transformation
+% 2. Calculate orbital period: T = 2π√(a³/μ)
+% 3. Integrate two-body equations of motion: r̈ = -μr/|r|³
+% 4. Plot 3D trajectory with Earth as textured sphere
+% 5. Verify orbital characteristics (periapsis, apoapsis, period)
+%
+% MATHEMATICAL FRAMEWORK:
+% The two-body problem assumes only Earth's gravity acts on the satellite:
+%   - Equations of Motion: ṙ = v,  v̇ = -μ/r³ * r
+%   - Keplerian Elements: {a, e, i, Ω, ω, θ} uniquely define the orbit
+%   - Orbital Period: T = 2π√(a³/μ) = 2π√(a³/398600.4418 km³/s²)
+%
+% INTERPRETATION OF RESULTS:
+% The nominal orbit provides the reference trajectory before considering
+% realistic perturbations. Deviations from this trajectory directly indicate
+% the magnitude of perturbation effects.
 
 % Convert initial Keplerian elements to position and velocity vectors
 [r_nominal_initial, v_nominal_initial] = kep2car(kep_parameters, mu_E);
@@ -102,12 +203,12 @@ surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'n
 
 % Finalize the plot with labels, equal axes, and grid
 hold off;
-xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
-title('Orbit Representation - Nominal Orbit (2BP)');
+xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]','LineWidth',2);
+
 axis equal;
 grid on;
 view(45,30);
-legend('Orbit','Earth');
+
 
 % Print key orbital parameters for the nominal orbit
 fprintf('Plotting Nominal Orbit. Identified as a Polar Low Earth Orbit.\n');
@@ -119,9 +220,31 @@ fprintf('Orbital Period: %4f minutes\n', T_nominal/60);
 fprintf('----------------------------------------\n');
 
 %% Ground Track of Nominal Orbit
-% This section calculates the ground track for the nominal orbit by converting
-% Cartesian positions to geodetic coordinates (longitude and latitude) over time,
-% accounting for Earth's rotation. It stores the results in a data array for plotting.
+% SECTION OBJECTIVE:
+% Calculate the ground track (satellite footprint on Earth's surface) by
+% converting orbital positions to geodetic coordinates accounting for
+% Earth's rotation.
+%
+% COORDINATE TRANSFORMATIONS:
+% Step 1: Cartesian → Spherical (r, declination δ, right ascension α)
+%   δ = arcsin(z/r)  [latitude in inertial frame]
+%   α = atan2(y, x)  [longitude in inertial frame]
+%
+% Step 2: Account for Earth's Rotation
+%   Greenwich Sidereal Time: θ_G(t) = θ_G(t₀) + ω_E*(t - t₀)
+%   where ω_E = 2π/(86164 s) = 7.2921×10⁻⁵ rad/s (sidereal day)
+%
+% Step 3: Ground Track Coordinates
+%   Longitude: λ = α - θ_G(t)  [wrapped to [-180°, 180°]]
+%   Latitude: φ = δ
+%
+% KEY PROPERTIES:
+% - Ground track depends on orbital inclination, not eccentricity (for fixed a)
+% - Polar orbits (i ≈ 90°) cover latitudes from -i to +i
+% - Ground track repeats if orbital period has specific ratio with Earth day
+%   (repeating ground track condition)
+% - Discontinuities in longitude plots occur at dateline crossing (+180° ↔ -180°)
+
 
 % Initialize array to store ground track data: [delta, alpha, lon, lat]
 gtrack_data = zeros(length(TNominal),4);
@@ -151,9 +274,28 @@ end
 fprintf('Calculating Nominal Ground Track.\n');
 fprintf('----------------------------------------\n');
 %% Repeating Ground Track
-% This section computes a repeating ground track by adjusting the semi-major axis
-% to achieve resonance with Earth's rotation, integrates the unperturbed orbit,
-% and calculates the corresponding ground track data.
+% SECTION OBJECTIVE:
+% Design an orbit whose ground track repeats after m orbits in k mean solar days,
+% achieved by selecting the semi-major axis to satisfy the resonance condition.
+%
+% RESONANCE CONDITION FOR REPEATING GROUND TRACK:
+% The ground track repeats when:
+%   m*n_orbital = k*n_Earth
+% where:
+%   n_orbital = √(μ/a³) = mean motion of satellite (rad/s)
+%   n_Earth = 2π/(86400 s) = Earth's mean angular velocity
+%   m, k are coprime integers (e.g., m=12, k=1 means 12 orbits/day)
+%
+% SEMI-MAJOR AXIS CALCULATION:
+%   From resonance: a_repeat = ∛(μ/[ω_E*(m/k)]²)
+%
+% ADVANTAGES OF REPEATING GROUND TRACKS:
+% - Consistent satellite passes over same ground locations
+% - Enables regular data collection (Earth observation, communications)
+% - Predictable access windows for ground stations
+% - Example applications: Earth observation satellites, polar orbiters
+%
+% NOTE: Initial choice m=12, k=1 means 12 passes per solar day (sun-synchronous-like behavior)
 
 % Calculate semi-major axis for repeating ground track using custom function
 a_repeat = RepeatingGroundTrack(m,k,w_earth_rad,mu_E);
@@ -199,8 +341,31 @@ fprintf('Calculating Repeating Nominal Ground Track assuming k = 1 and m = 12.\n
 fprintf('----------------------------------------\n');
 
 %% Repeating Perturbed Ground Track
-% This section computes the ground track for a repeating orbit under perturbations
-% (J2 and drag), integrating the perturbed equations and calculating coordinates.
+% SECTION OBJECTIVE:
+% Compute the semi-major axis that maintains repeating ground track when
+% J2 perturbation is included, as it causes secular precession of orbital elements.
+%
+% J2 PERTURBATION EFFECTS:
+% Earth's oblateness (J2 = 0.00108263) causes:
+%   1. RAAN Precession (Ω̇): dΩ/dt = -3/2 * (R_E/p)² * J2 * n * cos(i)
+%      - Negative for i < 90° (precession westward)
+%      - Zero at critical inclination ≈ 63.4° or 116.6°
+%      - Positive for i > 90° (precession eastward)
+%
+%   2. Argument of Periapsis Precession (ω̇): dω/dt = 3/4 * (R_E/p)² * J2 * n * (5*cos²(i) - 1)
+%      - Rotates periapsis in orbit plane
+%
+%   3. Semi-major Axis: No secular change from J2 (only oscillatory)
+%
+% REPEATING ORBIT ADJUSTMENT:
+% For sun-synchronous-like orbits, J2 precession is used to align orbital plane
+% with sun direction. The semi-major axis must be slightly modified to maintain
+% the resonance condition when J2 is active.
+%
+% CALCULATION FUNCTION: computeRGTSemiMajorAxis()
+% Inputs: μ, R_E, J2, ω_E, k, m, i, e, tolerance
+% Outputs: a_repeat_perturbed (adjusted semi-major axis)
+%
 
 % Use the same semi-major axis as repeating orbit
 [a_repeat_perturbed, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(mu_E, R_E, J2_E, w_earth_rad, k, m, kep_parameters(3), kep_parameters(2), 1e-9);
@@ -248,8 +413,35 @@ fprintf('Repeating Perturbed Semi-Major Axis: %.4f km\n', a_repeat_perturbed);
 fprintf('----------------------------------------\n');
 
 %% Perturbed Orbit (J2 + Drag)
-% This section integrates the orbit under J2 and atmospheric drag perturbations,
-% plots the 3D trajectory, and extracts position/velocity data for further analysis.
+% SECTION OBJECTIVE:
+% Integrate the complete perturbed equations of motion including J2 and
+% atmospheric drag effects to model realistic orbital decay.
+%
+% PERTURBATION FORCES:
+%
+% 1. J2 PERTURBATION (Gravitational):
+%    Acceleration: a_J2 = -3/2 * (μ/r⁵) * (R_E/r)² * J2 * [terms involving r_z]
+%    Effect: Precesses RAAN and argument of periapsis
+%    Magnitude: ~10⁻⁴ m/s² for LEO satellites
+%
+% 2. ATMOSPHERIC DRAG (Non-conservative):
+%    Acceleration: a_drag = -1/2 * ρ(h) * v² * (C_D * A / m) * v̂
+%    where:
+%      ρ(h): Exponential atmospheric density model
+%      C_D: Drag coefficient (~2.1 typical)
+%      A/m: Area-to-mass ratio [km²/kg]
+%      v̂: Velocity direction unit vector
+%    Effect: Causes secular semi-major axis decay
+%    Magnitude: ~10⁻⁶ m/s² for small satellites
+%
+% COMBINED EFFECTS:
+% - J2 causes oscillations in orbital elements (short-period perturbations)
+% - Drag causes smooth decay of semi-major axis (long-period perturbation)
+% - Total effect: Gradual orbital decay with oscillations superimposed
+%
+% VISUALIZATION:
+% Scatter plot color-coded by time shows orbital decay as spiral inward
+
 
 % Initial state for perturbed orbit
 [r_perturbed_initial, v_perturbed_initial] = kep2car(kep_parameters, mu_E);
@@ -259,19 +451,22 @@ y_perturbed_initial = [r_perturbed_initial; v_perturbed_initial];
 a_perturbed_initial = kep_parameters(1);
 T_perturbed_initial = 2*pi*sqrt(a_perturbed_initial^3/mu_E);
 tspan_perturbed = linspace(0, T_groundtrack, floor(T_groundtrack));
-
+tspan_perturbed_for_plot = linspace(0, 15*T_groundtrack, floor(T_groundtrack));
 % Integrate with perturbations
 [TPerturbed, YPerturbed] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_perturbed, y_perturbed_initial, options);
-
+[TPerturbed_for_plot, YPerturbed_for_plot] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_perturbed_for_plot, y_perturbed_initial, options);
 % Extract position and velocity
 r_perturbed = YPerturbed(:,1:3);
 v_perturbed = YPerturbed(:,4:6);
+
+r_perturbed_for_plot = YPerturbed_for_plot(:,1:3);
+v_perturbed_for_plot = YPerturbed_for_plot(:,4:6);
 
 % Plot the perturbed orbit
 figure('Name','Perturbed Orbit')
 hold on
 %plot3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3))
-scatter3(YPerturbed(:,1), YPerturbed(:,2), YPerturbed(:,3), 10, TPerturbed./86400, 'filled');
+scatter3(YPerturbed_for_plot(:,1), YPerturbed_for_plot(:,2), YPerturbed_for_plot(:,3), 10, TPerturbed_for_plot./86400, 'filled');
 surf(XS, YS, ZS, 'FaceColor', 'texturemap', 'CData', EarthImage, 'EdgeColor', 'none');
 hold off;
 xlabel('X [km]'); ylabel('Y [km]'); zlabel('Z [km]');
@@ -279,14 +474,13 @@ axis equal;
 grid on;
 view(45,30);
 
-title('Orbit Representation - Perturbed Orbit (J2 + Drag)');
+
 axis equal;
 grid on;
 view(45,30);
-legend('Orbit','Earth');
 c = colorbar;
 c.Label.String = 'Time [days]';
-caxis([0 TPerturbed(end)/86400]); % Set color axis to represent time in days
+caxis([0 TPerturbed_for_plot(end)/86400]); % Set color axis to represent time in days
 
 % Add colorbar for orbit coloring by index
 
@@ -294,8 +488,22 @@ caxis([0 TPerturbed(end)/86400]); % Set color axis to represent time in days
 fprintf('Calculating and Plotting Perturbed Orbit with J2 and Drag.\n');
 fprintf('----------------------------------------\n');
 
-%% 2.c. Ground Track of Perturbed
-% This section calculates the ground track for the perturbed orbit.
+%% Ground Track of Perturbed
+% SECTION OBJECTIVE:
+% Compute ground tracks for the perturbed orbit and compare with nominal
+% to visualize the effects of perturbations on satellite coverage patterns.
+%
+% EXPECTED DIFFERENCES:
+% - Nominal ground track repeats perfectly (no decay)
+% - Perturbed ground track spirals inward due to drag
+% - Ground track width varies due to orbital element oscillations
+% - Over time, perturbed orbit descends and eventually re-enters atmosphere
+%
+% PRACTICAL IMPLICATIONS:
+% - Observation satellites must be regularly boosted to maintain orbit
+% - Uncontrolled satellites eventually decay and burn up
+% - Ground track predictions degrade over long periods without propulsion
+
 
 % Initialize ground track data
 gtrack_data_perturbed = zeros(length(TNominal),4);
@@ -345,7 +553,39 @@ fprintf('Plotting Ground Track for Nominal, Repeating, and Perturbed Orbits.\n')
 fprintf('----------------------------------------\n');
 
 %% Ground Track Nominal & Perturbed Orbit for 1 period, 1 day, 12 days
-% Plot ground track for nominal orbit only - 1 orbit period
+% SECTION OBJECTIVE:
+% Generate ground track maps for different time scales to visualize orbital
+% coverage and perturbation effects at multiple temporal resolutions.
+%
+% TIME SCALES ANALYZED:
+%
+% 1. ONE ORBITAL PERIOD (~90 minutes for this LEO):
+%    - Shows instantaneous footprint coverage
+%    - Useful for communication link analysis
+%    - Highlights instantaneous field of regard
+%
+% 2. ONE DAY (24 hours = 1440 minutes):
+%    - Shows complete coverage pattern
+%    - For polar orbit: covers latitudes ±85° twice
+%    - Time to complete Earth coverage
+%
+% 3. TWELVE DAYS (repeating ground track period):
+%    - Shows all ground track paths for repeating orbit
+%    - For m=12, k=1: 144 total passes over ground
+%    - Complete access pattern for ground stations
+%    - Defines revisit time for any specific location
+%
+% GROUND TRACK PROPERTIES:
+% - Westward shift each orbit due to Earth rotation beneath satellite
+% - For polar orbits: ground track traces meridians separated by ~2300 km
+% - Spacing = (2πR_E/orbits_per_day) for uniform distribution
+%
+% VISUALIZATION FEATURES:
+% - Earth map background (realistic context)
+% - Start/end markers for each trajectory
+% - Color-coded by trajectory type (nominal vs. perturbed)
+% - Discontinuity handling at ±180° longitude
+
 
 % Extract data for 1 orbit period (nominal and perturbed)
 idx_1orbit = find(TNominal <= T_nominal);
@@ -407,25 +647,46 @@ wrap_indices_1day_repeat_perturbed = find(abs(diff(lon_1day_repeat_perturbed)) >
 starts_1day_repeat_perturbed = [1; wrap_indices_1day_repeat_perturbed + 1];
 ends_1day_repeat_perturbed = [wrap_indices_1day_repeat_perturbed; length(lon_1day_repeat_perturbed)];
 
-
 figure('Name','Ground Track Nominal Orbit - 1 Orbit Period')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
 hold on
 for i = 1:length(starts_1orbit)
     if i == 1
-        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
     else
-        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_1orbit(1), lat_1orbit(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_1orbit(end), lat_1orbit(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+figure('Name','Ground Track Nominal & Perturbed Orbit - 1 Orbit Period')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_1orbit)
+    if i == 1
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_1orbit(starts_1orbit(i):ends_1orbit(i)), lat_1orbit(starts_1orbit(i):ends_1orbit(i)), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
 for i = 1:length(starts_1orbit_perturbed)
     idx = starts_1orbit_perturbed(i):ends_1orbit_perturbed(i);
     if i == 1
-        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 2, 'DisplayName', 'Perturbed Orbit');
     else
-        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_1orbit_perturbed(idx), lat_1orbit_perturbed(idx), 'g', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
@@ -436,14 +697,13 @@ plot(lon_1orbit_perturbed(end), lat_1orbit_perturbed(end), 'gs', 'MarkerSize', 1
 
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Nominal Orbit (1 Orbit Period)')
+
 xlim([-180 180])
 ylim([-90 90])
-legend('Location','best')
 grid on
 hold off
 
-% Plot ground track for nominal orbit only - 1 day
+% Plot ground track for nominal orbit - 1 day
 figure('Name','Ground Track Nominal Orbit - 1 Day')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
@@ -451,18 +711,44 @@ hold on
 for i = 1:length(starts_1day)
     idx = starts_1day(i):ends_1day(i);
     if i == 1
-        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
     else
-        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_1day(1), lat_1day(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_1day(end), lat_1day(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+
+% Plot ground track for nominal & perturbed orbit - 1 day
+figure('Name','Ground Track Nominal Orbit - 1 Day')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_1day)
+    idx = starts_1day(i):ends_1day(i);
+    if i == 1
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_1day(idx), lat_1day(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
 for i = 1:length(starts_1day_perturbed)
     idx = starts_1day_perturbed(i):ends_1day_perturbed(i);
     if i == 1
-        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 2, 'DisplayName', 'Perturbed Orbit');
     else
-        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_1day_perturbed(idx), lat_1day_perturbed(idx), 'g', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
@@ -472,10 +758,9 @@ plot(lon_1day_perturbed(1), lat_1day_perturbed(1), 'go', 'MarkerSize', 12, 'Disp
 plot(lon_1day_perturbed(end), lat_1day_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Perturbed End');
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Nominal Orbit (1 Day)')
+
 xlim([-180 180])
 ylim([-90 90])
-legend('Location','best')
 grid on
 hold off
 
@@ -487,18 +772,42 @@ hold on
 for i = 1:length(starts_nominal)
     idx = starts_nominal(i):ends_nominal(i);
     if i == 1
-        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Nominal Orbit');
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
     else
-        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_nominal(1), lat_nominal(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Nominal Start');
+plot(lon_nominal(end), lat_nominal(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Nominal End');
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+% Plot ground track for nominal & perturbed orbit - 12 days
+figure('Name','Ground Track Nominal & Perturbed Orbit - 12 Days')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_nominal)
+    idx = starts_nominal(i):ends_nominal(i);
+    if i == 1
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Nominal Orbit');
+    else
+        plot(lon_nominal(idx), lat_nominal(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
 for i = 1:length(starts_perturbed)
     idx = starts_perturbed(i):ends_perturbed(i);
     if i == 1
-        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Perturbed Orbit');
+        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 2, 'DisplayName', 'Perturbed Orbit');
     else
-        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_perturbed(idx), lat_perturbed(idx), 'g', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
@@ -508,104 +817,54 @@ plot(lon_perturbed(1), lat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 
 plot(lon_perturbed(end), lat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Perturbed End');
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Nominal Orbit (12 Days)')
+
 xlim([-180 180])
 ylim([-90 90])
-legend('Location','best')
 grid on
 hold off
 
-figure('Name','Ground Track Repeating Orbit - 1 Orbit Period')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-for i = 1:length(starts_1orbit_repeat)
-    idx = starts_1orbit_repeat(i):ends_1orbit_repeat(i);
-    if i == 1
-        plot(lon_1orbit_repeat(idx), lat_1orbit_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
-    else
-        plot(lon_1orbit_repeat(idx), lat_1orbit_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
-    end
-end
-
-for i = 1:length(starts_1orbit_repeat_perturbed)
-    idx = starts_1orbit_repeat_perturbed(i):ends_1orbit_repeat_perturbed(i);
-    if i == 1
-        plot(lon_1orbit_repeat_perturbed(idx), lat_1orbit_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
-    else
-        plot(lon_1orbit_repeat_perturbed(idx), lat_1orbit_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
-    end
-end
-
-plot(lon_1orbit_repeat(1), lat_1orbit_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
-plot(lon_1orbit_repeat(end), lat_1orbit_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
-plot(lon_1orbit_repeat_perturbed(1), lat_1orbit_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
-plot(lon_1orbit_repeat_perturbed(end), lat_1orbit_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
-
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Repeating Orbit (1 Orbit Period)')
-xlim([-180 180])
-ylim([-90 90])
-legend('Location','best')
-grid on
-hold off
-
-figure('Name','Ground Track Repeating Orbit - 1 Day')
-imagesc([-180 180], [-90 90], flipud(EarthImage));
-set(gca, 'YDir', 'normal');
-hold on
-for i = 1:length(starts_1day_repeat)
-    idx = starts_1day_repeat(i):ends_1day_repeat(i);
-    if i == 1
-        plot(lon_1day_repeat(idx), lat_1day_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
-    else
-        plot(lon_1day_repeat(idx), lat_1day_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
-    end
-end
-
-for i = 1:length(starts_1day_repeat_perturbed)
-    idx = starts_1day_repeat_perturbed(i):ends_1day_repeat_perturbed(i);
-    if i == 1
-        plot(lon_1day_repeat_perturbed(idx), lat_1day_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
-    else
-        plot(lon_1day_repeat_perturbed(idx), lat_1day_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
-    end
-end
-
-plot(lon_1day_repeat(1), lat_1day_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
-plot(lon_1day_repeat(end), lat_1day_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
-plot(lon_1day_repeat_perturbed(1), lat_1day_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
-plot(lon_1day_repeat_perturbed(end), lat_1day_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
-
-xlabel('Longitude [degrees]')
-ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Repeating Orbit (1 Day)')
-xlim([-180 180])
-ylim([-90 90])
-legend('Location','best')
-grid on
-hold off
-
-figure('Name','Ground Track Repeating Orbit - 12 Days')
+figure('Name','Ground Track Repeating Nominal Orbit - 12 Days')
 imagesc([-180 180], [-90 90], flipud(EarthImage));
 set(gca, 'YDir', 'normal');
 hold on
 for i = 1:length(starts_repeat)
     idx = starts_repeat(i):ends_repeat(i);
     if i == 1
-        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 1, 'DisplayName', 'Repeating Orbit');
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Repeating Orbit');
     else
-        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_repeat(1), lat_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
+plot(lon_repeat(end), lat_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+xlim([-180 180])
+ylim([-90 90])
+grid on
+hold off
+
+figure('Name','Ground Track Repeating Nominal & Perturbed Orbit - 12 Days')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_repeat)
+    idx = starts_repeat(i):ends_repeat(i);
+    if i == 1
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Repeating Orbit');
+    else
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
 for i = 1:length(starts_repeat_perturbed)
     idx = starts_repeat_perturbed(i):ends_repeat_perturbed(i);
     if i == 1
-        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'DisplayName', 'Repeating Perturbed Orbit');
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 2, 'DisplayName', 'Repeating Perturbed Orbit');
     else
-        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 1, 'HandleVisibility', 'off');
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 2, 'HandleVisibility', 'off');
     end
 end
 
@@ -616,10 +875,42 @@ plot(lon_repeat_perturbed(end), lat_repeat_perturbed(end), 'gs', 'MarkerSize', 1
 
 xlabel('Longitude [degrees]')
 ylabel('Latitude [degrees]')
-title('Satellite Ground Track - Repeating Orbit (12 Days)')
 xlim([-180 180])
 ylim([-90 90])
-legend('Location','best')
+grid on
+hold off
+
+figure('Name','Ground Track Repeating Nominal & Perturbed Orbit - 12 Days - Zoomed In')
+imagesc([-180 180], [-90 90], flipud(EarthImage));
+set(gca, 'YDir', 'normal');
+hold on
+for i = 1:length(starts_repeat)
+    idx = starts_repeat(i):ends_repeat(i);
+    if i == 1
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'DisplayName', 'Repeating Orbit');
+    else
+        plot(lon_repeat(idx), lat_repeat(idx), 'r', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+for i = 1:length(starts_repeat_perturbed)
+    idx = starts_repeat_perturbed(i):ends_repeat_perturbed(i);
+    if i == 1
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 2, 'DisplayName', 'Repeating Perturbed Orbit');
+    else
+        plot(lon_repeat_perturbed(idx), lat_repeat_perturbed(idx), 'g', 'LineWidth', 2, 'HandleVisibility', 'off');
+    end
+end
+
+plot(lon_repeat(1), lat_repeat(1), 'ro', 'MarkerSize', 12, 'DisplayName', 'Repeating Start');
+plot(lon_repeat(end), lat_repeat(end), 'rs', 'MarkerSize', 12, 'DisplayName', 'Repeating End');
+plot(lon_repeat_perturbed(1), lat_repeat_perturbed(1), 'go', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed Start');
+plot(lon_repeat_perturbed(end), lat_repeat_perturbed(end), 'gs', 'MarkerSize', 12, 'DisplayName', 'Repeating Perturbed End');
+
+xlabel('Longitude [degrees]')
+ylabel('Latitude [degrees]')
+xlim([172.7860 172.7869]) % Zoomed in longitude range
+ylim([49.736 49.744]) % Zoomed in latitude range
 grid on
 hold off
 
@@ -630,11 +921,44 @@ fprintf('Plotting Nominal & Perturbed Ground Track with different periods.\n');
 fprintf('----------------------------------------\n');
 
 %% Keplerian Elements
+% SECTION OBJECTIVE:
+% Integrate the orbit for 2 years and compute Keplerian elements history
+% using two methods: (1) Cartesian state conversion, (2) Gauss Planetary Equations.
+% Compare results to validate numerical integration accuracy.
+%
+% PART A: CARTESIAN INTEGRATION
+% Method: Convert Cartesian state (r, v) → Keplerian (a, e, i, Ω, ω, θ) at each timestep
+%
+% Advantages:
+%   - Direct integration of fundamental equations F = ma
+%   - Numerically stable for well-behaved ODE systems
+%   - No singularities for small eccentricity
+%
+% Disadvantages:
+%   - 6 coupled differential equations (higher computational cost)
+%   - Requires conversion back to Keplerian for analysis
+%   - Perturbations in Cartesian form can be complex
+%
+% PART B: GAUSS PLANETARY EQUATIONS
+% Method: Directly integrate Keplerian elements with perturbations in RSW frame
+%
+% Gauss Equations: d(kep)/dt = f(perturbations in radial/tangential/normal)
+%
+% Advantages:
+%   - Physical insight: see how each perturbation affects each element
+%   - Faster for high-precision long-term propagation
+%   - Natural for perturbation analysis
+%
+% Disadvantages:
+%   - Singularities for e → 0 or e → 1 (circular/parabolic orbits)
+%   - Requires perturbation formulation in RSW (osculating elements)
+%
+% COMPARISON METRICS:
+% - Position vector differences: |r_Cartesian - r_Gauss| [km]
+% - Relative element errors: ΔElement/Element × 100% [%]
+% - Angular element differences: min(|Δθ|, 2π - |Δθ|) [rad]
+% - RMS errors and statistical summaries
 
-% Perturbed Orbit for a span of 2 years
-% This section integrates the orbit under J2 and drag perturbations for a span
-% of 2 years, extracts position/velocity data, and prepares for Keplerian
-% elements history computation.
 tspan_2years = linspace(0, 2*365*24*60*60, 2*365*24*60); % 2 years in seconds
 tStart_2years = tic;
 [TPerturbedLong, YPerturbedLong] = ode113(@(t,y) ode_2bp_j2_drag(t,y,mu_E,J2_E, R_E, omega_E, c_d, AreaOverMass), tspan_2years, y_perturbed_initial, options);
@@ -702,7 +1026,7 @@ tEnd_Gauss = toc(tStart_Gauss);
 fprintf('Time taken for 2 years integration using Gauss: %.2f seconds.\n', tEnd_Gauss);
 fprintf('----------------------------------------\n');
 
-%% Compare with Cartesian integration
+% Compare with Cartesian integration
 % This section compares the results from Gauss and Cartesian integrations by
 % calculating position differences, angular differences, and computing comprehensive
 % statistical metrics including RMS error.
@@ -926,9 +1250,45 @@ fprintf('Plotting Keplerian Elements History from Perturbed Orbit (Cartesian Int
 fprintf('----------------------------------------\n');
 
 %% Low-Pass Filtering
-% This section applies moving average filtering to smooth the Keplerian elements
-% history, using window sizes determined via Fast Fourier Transform (FFT) analysis.
-% Plots FFT spectra, Bode responses, and filtered results.
+% SECTION OBJECTIVE:
+% Extract long-period (secular) perturbation trends from noisy Keplerian
+% elements by applying optimized moving-average filters based on spectral analysis.
+%
+% PERTURBATION CLASSIFICATION:
+% Short-period variations (filtered out):
+%   - True anomaly oscillations: High frequency, ~orbital frequency
+%   - RAAN short-period: ~2× orbital frequency
+%   - Argument of periapsis: Oscillates with orbital motion
+%   - Magnitude: Can reach ±1-2° for angular elements
+%
+% Long-period trends (retained):
+%   - Semi-major axis decay: Smooth drift due to drag (~10s-100s of km/year)
+%   - Inclination changes: Slow drift (perturbation-dependent)
+%   - RAAN secular precession: ~0.5-5° per day (J2 effect)
+%   - Argument of periapsis: Secular drift (J2 + drag coupled)
+%   - Magnitude: Steady changes over weeks/months
+%
+% FILTER DESIGN STRATEGY:
+% Step 1: FFT Analysis
+%   - Compute frequency spectrum of each element
+%   - Identify orbital frequency f_orb = 1/T_orbital
+%   - Set cutoff frequency: f_cut = α × f_orb (α typically 0.01-0.1)
+%
+% Step 2: Moving Average Filter
+%   - Window size: W = 1/(f_cut × Δt)
+%   - Transfer function: H(f) = sin(πfW)/(πfW) × sinc(...)
+%   - -3dB cutoff ≈ 0.44/W (normalized frequency)
+%
+% Step 3: Bode Plot Validation
+%   - Verify -3dB point is near desired cutoff frequency
+%   - Check phase response for distortion
+%   - Ensure attenuation at orbital frequency
+%
+% MATHEMATICAL FOUNDATION:
+% Moving Average Impulse Response: h[n] = 1/W for n = 0..W-1
+% Frequency Response: H(e^jω) = (1 - e^(-jωW))/(W(1 - e^(-jω)))
+% Magnitude: |H(f)| = |sin(πfW)/(πfW)| (sinc function)
+
 
 % Verify data consistency
 assert(length(TPerturbedLong) == length(keplerian_history), 'Data length mismatch between TPerturbedLong and keplerian_history');
@@ -1027,7 +1387,7 @@ fprintf('========================================\n\n');
 % ========================================
 % STEP 3: Bode Plot Analysis
 % ========================================
-%% Improved Bode Plot Analysis
+% Improved Bode Plot Analysis
 figure('Name', 'Improved Bode Plots of Moving Average Filters');
 Fs = 1 / dt;  % Sampling frequency in Hz
 
@@ -1046,7 +1406,7 @@ for k = 1:6
     mag_dB = 20*log10(abs(H) + eps);  % Add eps to avoid log(0)
     
     % Phase in degrees (unwrapped)
-    phase_deg = rad2deg(unwrap(angle(H)));
+    phase_deg = rad2deg(angle(H));
     
     % Find -3dB point
     [~, idx_3db] = min(abs(mag_dB + 3));
@@ -1208,9 +1568,40 @@ fprintf('\n✓ Low-Pass Filtering completed successfully!\n');
 fprintf('========================================\n\n');
 
 %% Evolution of two real satellites
-% This section analyzes the orbital evolution of two real satellites (BREEZE-M TANK and TITAN 3C TRANSTAGE DEB)
-% over a one-month period by reading ephemeris data, propagating with perturbations using Gauss equations,
-% computing ground tracks, and plotting comparisons of Keplerian elements and ground tracks.
+% SECTION OBJECTIVE:
+% Read real satellite ephemeris data (Two Line Elements) and propagate
+% using Gauss equations to model orbital evolution.
+%
+% SATELLITE DATA:
+% 1. BREEZE-M TANK: Debris from upper stage rocket
+%    - Low Earth Orbit
+%    - Smaller mass → higher area/mass ratio → faster decay
+%    - Example of uncontrolled object evolution
+%
+% 2. TITAN 3C TRANSTAGE: Historical rocket debris
+%    - Also low Earth orbit
+%    - Different mass/area properties
+%    - Comparative analysis of decay rates
+%
+% DATA SOURCE: TLE (Two Line Element Set)
+% Format standardized by NORAD, contains:
+%   - Semi-major axis (via mean motion n)
+%   - Eccentricity
+%   - Inclination
+%   - RAAN, argument of perigee, mean anomaly (at epoch)
+%   - Epoch date/time
+%
+% EPHEMERIS PROCESSING:
+% - Read multiple TLE epochs spanning 1 month
+% - Extract Keplerian elements from each epoch
+% - Propagate using Gauss equations with perturbations
+% - Compare predicted vs. actual ephemeris data
+%
+% ANALYSIS GOALS:
+% - Validate perturbation models against real data
+% - Quantify decay rates
+% - Predict re-entry window
+% - Assess propagation accuracy over 1-month horizon
 
 % Read ephemeris files for the two satellites
 [utc_time_tank, mission_info_tank] = read_ephemeris_file('Ephemeris_BreezeM_Tank.txt');
