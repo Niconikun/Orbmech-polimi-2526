@@ -1,16 +1,25 @@
 function theta_G = Greenwich_longitude(date)
 % Greenwich_longitude calculates the Greenwich Mean Longitude for a given date.
 % 
-% Inputs:
-%   date - A datetime object representing the date and time for which the
-%          Greenwich longitude is to be calculated.
-%
-% Outputs:
-%   theta_G - The calculated Greenwich Mean Longitude in degrees.
 %
 % The function computes the Julian date from the input date, converts it to
 % Julian centuries, and then calculates the mean longitude based on the
 % provided date and time. The result is adjusted for the time of day.
+%
+% PROTOTYPE
+%  theta_G = Greenwich_longitude(date)
+%
+%  Inputs:
+%   date - A datetime object representing the date and time for which the
+%          Greenwich longitude is to be calculated.
+%
+%  Outputs:
+%   theta_G - The calculated Greenwich Mean Longitude in degrees.
+%
+% Contributors:
+% Federico Masiero, Alice Muscas, Nicolás Sepúlveda, Prthik Nandhan Karthikeyan,
+%
+% version 1.0 - November 2025
 
 Y = year(date);
 M = month(date);
