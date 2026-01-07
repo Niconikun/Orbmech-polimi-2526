@@ -18,7 +18,7 @@ function [alpha, delta, lon, lat] = groundTrack(S, lon_G0, omega_E, t_vec, str)
 %   lat [-]          Latitude with respect to rotating Earth
 %
 % CONTRIBUTORS:
-%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, ...
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
 % 
 % VERSIONS
 %   2025-10-21: First version
