@@ -1,5 +1,8 @@
-function a_per = j2_drag_perturbations_RSW(t, kep, mu, J2, R, omega, c_d, AoverMass)
+function a_per = j2_drag_perturbations_RSW(~, kep, mu, J2, R, omega, c_d, AoverMass)
 % J2_DRAG_PERTURBATIONS_RSW Returns J2 and drag perturbations in RSW frame
+%
+% PROTOTYPE
+%   a_per = j2_drag_perturbations_RSW(t, kep, mu, J2, R, omega, c_d, AoverMass)
 %
 % INPUT:
 %   t         - Time (s)
@@ -13,7 +16,18 @@ function a_per = j2_drag_perturbations_RSW(t, kep, mu, J2, R, omega, c_d, AoverM
 %
 % OUTPUT:
 %   a_per     - Perturbing acceleration in RSW frame [3x1] (km/s^2)
-
+%
+% Called functions:
+%   kep2car.m
+%   cartesian_to_RSW.m
+%
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-12: First version
+% 
+% -------------------------------------------------------------------------
     % Convert Keplerian to Cartesian
     [r, v] = kep2car(kep, mu);
     
