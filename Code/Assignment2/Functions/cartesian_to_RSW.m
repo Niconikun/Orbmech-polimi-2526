@@ -1,6 +1,9 @@
 function a_RSW = cartesian_to_RSW(r, v, a_cart)
 % CARTESIAN_TO_RSW Converts acceleration from Cartesian to RSW frame
 %
+% PROTOTYPE
+%   a_RSW = cartesian_to_RSW(r, v, a_cart)
+%
 % INPUT:
 %   r      - Position vector in inertial frame [3x1] (km)
 %   v      - Velocity vector in inertial frame [3x1] (km/s)
@@ -8,6 +11,14 @@ function a_RSW = cartesian_to_RSW(r, v, a_cart)
 %
 % OUTPUT:
 %   a_RSW  - Acceleration in RSW frame [3x1] (km/s^2)
+
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-11: First version
+% 
+% -------------------------------------------------------------------------
 
     % Unit vectors in RSW frame
     r_norm = norm(r);
