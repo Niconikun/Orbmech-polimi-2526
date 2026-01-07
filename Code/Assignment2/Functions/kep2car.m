@@ -14,7 +14,7 @@ function [r, v] = kep2car(kep, mu)
 %   v [3x1]          Velocity vector
 % 
 % CONTRIBUTORS:
-%   Muscas Alice, Masiero Federico
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
 % 
 % VERSIONS
 %   2025-10-22: First version
