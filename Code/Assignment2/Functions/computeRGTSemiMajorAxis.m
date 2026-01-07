@@ -1,6 +1,9 @@
 function [a, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(mu, R, J2, omega, N, M, i, e, tol)
 % COMPUTERGTSEMIMAJORAXIS Calculate semi-major axis for J2-perturbed repeating ground track
 %
+% PROTOTYPE
+%   [a, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(mu, R, J2, omega, N, M, i, e, tol)
+%
 % Inputs:
 %   N     - Integer number of orbital revolutions per repeat cycle
 %   M     - Integer number of Earth rotations per repeat cycle
@@ -17,6 +20,14 @@ function [a, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(mu, R, J2, omega, N, 
 %   % Calculate for 15 revs per day, 53° inclination
 %   [a, T_nodal, Omega_dot] = computeRGTSemiMajorAxis(15, 1, deg2rad(53));
 %   altitude = (a - 6378137)/1000; % Altitude in km
+%
+% CONTRIBUTORS:
+%   Muscas Alice, Masiero Federico, Karthikeyan Prthik Nandhan, Nicolás Sepúlveda
+% 
+% VERSIONS
+%   2025-12: First version
+% 
+% -------------------------------------------------------------------------
 
 % Physical constants (WGS84)
 
